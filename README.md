@@ -307,7 +307,7 @@ The pathway–pathway network is constructed using pathways identified as signif
 |---|---|
 | `pred_metagenome_unstrat.csv` | Gene abundance data from PICRUSt2. |
 | `sample_metadata.csv` | Sample metadata with group or condition information. **Required columns**: `SampleID`, `class`. |
-| `pathway_gene_map.csv` | Mapping file from pathways to genes. **First column: pathway ID; other columns: gene IDs.** |
+| `pathway_gene_map.csv` | Mapping file from pathways to genes. **First column:** pathway ID; **other columns:** gene IDs. |
 
 ```r
 library(DESeq2)
