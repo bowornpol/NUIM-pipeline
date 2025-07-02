@@ -82,7 +82,7 @@ qiime feature-classifier classify-sklearn \
 # Export the final feature table and representative sequences for functional prediction.
 
 qiime tools export \
-  --input-path normalized_table.qza \
+  --input-path rarefied_table.qza \
   --output-path feature-table
 
 qiime tools export \
