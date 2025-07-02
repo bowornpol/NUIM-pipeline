@@ -671,8 +671,6 @@ construct_pathway_pathway_network <- function(
   }
   
   message("Pathway-pathway network construction complete.")
-  # Return GSEA and Jaccard results for further use
-  return(list(gsea = gsea_results_list, jaccard = jaccard_results_list))
 }
 
 # Example usage:
