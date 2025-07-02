@@ -106,7 +106,9 @@ PICRUSt2 predicts functional profiles from 16S rRNA data. This step uses represe
 - `dna-sequences.fasta`: Representative sequences exported from QIIME2 (`rep_seqs.qza`)
 - `feature-table.biom`: Feature table exported from QIIME2 (`normalized_table.qza`, converted to BIOM format)
 
-![Overview of the PICRUSt2 workflow](figures/PICRUSt2_overview.png)
+<p align="center">
+  <img src="figures/QIIME2_overview.png" width="500"/>
+</p>
 
 ### PICRUSt2 Command Line Example
 
