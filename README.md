@@ -183,7 +183,7 @@ pathway_pipeline.py \
 
 This module constructs a tripartite network linking microbial taxa, metabolic pathways, and metabolites. Below, we provide R functions for constructing each network layer.
 
-### <ins>Microbe–pathway network construction</ins>
+### <ins>Microbe–pathway network</ins>
 
 The microbe–pathway network is constructed from pathway contribution data, with edges representing the relative contribution of each microbe to specific pathways.
 
@@ -191,12 +191,9 @@ The microbe–pathway network is constructed from pathway contribution data, wit
 
 | File                  | Description                                                                 |
 |-----------------------|-----------------------------------------------------------------------------|
-| `path_abun_contrib.csv` | Pathway contribution data fdrom PICRUSt2  
-**Required columns**: `SampleID`, `FeatureID`, `FunctionID`, `taxon_function_abun`. |
-| `sample_metadata.csv`   | Sample metadata. Used when there are multiple experimental groups.  
-**Required column**: `SampleID`. |
-| `taxa_name.csv`         | Taxonomy annotations mapping `FeatureID` to taxonomic name (`TaxonID`).  
-**Required columns**: `FeatureID`, `TaxonID`. |
+| `path_abun_contrib.csv` | Pathway contribution data from PICRUSt2. **Required columns**: `SampleID`, `FeatureID`, `FunctionID`, `taxon_function_abun`. |
+| `sample_metadata.csv`   | Sample metadata. Used when there are multiple experimental groups. **Required column**: `SampleID`. |
+| `taxa_name.csv`         | Taxonomy annotations mapping `FeatureID` to taxonomic name (`TaxonID`). **Required columns**: `FeatureID`, `TaxonID`. |
 
 > `sample_metadata.csv` is optional if group-specific processing is not needed.  
 > `taxa_name.csv` is required to assign taxonomic labels to features.
@@ -291,11 +288,21 @@ construct_microbe_pathway_network(
 )
 ```
 
-#### **Outputs**
+#### **Output**
 
-| File                        | Description                                                                 |
-|-----------------------------|-----------------------------------------------------------------------------|
-| `microbe_pathway_network.csv` | A microbe-pathway network table with relative contribution values. |
+#### **Example Output**
+
+The output `microbe_pathway_network.csv` is a network table showing which microbes (taxa) contribute to which pathways, along with their contribution values.
+
+Example:
+
+| FunctionID | TaxonID | total_abundance | total_abundance_all_taxa | relative_contribution | median_contribution |
+|------------|---------|------------------|----------------------------|------------------------|----------------------|
+| ko00365    | g__Bilophila | 44.5 | 44.5 | 1.0 | 1.0 |
+| ko00571    | g__Bifidobacterium | 1073.7 | 1076.3 | 0.998 | 0.5 |
+| ko00720    | g__Blautia | 14084.3 | 16493.0 | 0.854 | 0.0055 |
+
+Each row represents a weighted edge linking a microbial taxon (`TaxonID`) to a functional pathway (`FunctionID`) with the strength of the edge defined by the `relative_contribution`.
 
 ### <ins>Pathway–pathway network construction</ins>
 
