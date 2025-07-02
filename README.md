@@ -1,4 +1,4 @@
-## NUIM: Network-based utility for integrating microbiome and metabolome data
+# NUIM: Network-based utility for integrating microbiome and metabolome data
 
 We developed NUIM, a modular, network-based framework for integrating microbiome and metabolome data systematically. NUIM consists of three modules: (1) data preparation and processing, (2) network construction, and (3) network analysis.
 
@@ -162,11 +162,11 @@ pathway_pipeline.py \
 
 #### **PICRUSt2 Outputs**
 
-- `KO_metagenome_out/pred_metagenome_unstrat.tsv.gz`: Predicted gene abundance. 
-- `pathways_abundance/path_abun_unstrat.tsv.gz`: Predicted pathway abundance.  
-- `pathways_contrib/path_abun_contrib.tsv.gz`: Predicted pathway contribution.
+- `KO_metagenome_out/pred_metagenome_unstrat.csv`: Predicted gene abundance. 
+- `pathways_abundance/path_abun_unstrat.csv`: Predicted pathway abundance.  
+- `pathways_contrib/path_abun_contrib.csv`: Predicted pathway contribution.
 
-### Module 2: Network Construction
+## Module 2: Network Construction
 
 This module constructs a tripartite network linking microbial taxa, metabolic pathways, and metabolites. The network is composed of the following components:
 
@@ -175,7 +175,7 @@ This module constructs a tripartite network linking microbial taxa, metabolic pa
 - The pathway–metabolite network is constructed by calculating pairwise correlation (e.g., Spearman or Pearson) between pathway abundance and metabolite concentrations.  
 - These networks are finally integrated through connected pathway nodes to construct a multi-layered network.
 
-### Module 3: Network Analysis
+## Module 3: Network Analysis
 
 This module provides three network analyses designed to identify context-specific associations:
 
