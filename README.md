@@ -17,6 +17,9 @@ This module defines the procedures required to prepare and process the input dat
 This section provides a general QIIME2 workflow for processing paired-end 16S rRNA sequencing data. The goal is to generate a feature table and representative sequences for downstream analysis in the NUIM pipeline.
 
 ```bash
+# Activate QIIME2 environment
+conda activate qiime2
+
 # STEP 1: Import paired-end FASTQ files using a manifest file
 # The manifest CSV should map sample IDs to file paths of forward and reverse reads.
 
@@ -88,6 +91,56 @@ qiime tools export \
 qiime tools export \
   --input-path rep_seqs.qza \
   --output-path dna-sequences
+```
+
+### PICRUSt2 Command Line Example
+
+PICRUSt2 predicts functional profiles from 16S rRNA data. This step uses representative sequences and a feature table from QIIME2.
+
+#### **Required Inputs**
+
+- `dna-sequences.fasta`: Representative sequences exported from QIIME2 (`rep_seqs.qza`)
+- `feature-table.biom`: Feature table exported from QIIME2 (`normalized_table.qza`, converted to BIOM format)
+
+### PICRUSt2 Command Line Example
+
+```bash
+# Activate PICRUSt2 environment
+conda activate picrust2
+
+# Run PICRUSt2 pipeline (no NSTI filtering)
+picrust2_pipeline.py \
+  -s dna-sequences.fasta \
+  -i feature-table.biom \
+  -o picrust2_out_nsti_default
+
+# Optional: Add --max_nsti to filter low-confidence ASVs
+# e.g., --max_nsti 0.5
+
+# Map predicted functions to pathways
+# Users can choose to use either KEGG or MetaCyc pathways
+
+# Generate pathway abundance data (sample × pathway)
+pathway_pipeline.py \
+  -i picrust2_out/<function_output_folder>/pred_metagenome_unstrat.tsv.gz \
+  -o pathways_abundance \
+  --no_regroup \
+  --map <pathway_mapping_file.tsv>
+
+# Generate pathway contribution (ASV × pathway)
+pathway_pipeline.py \
+  -i picrust2_out/<function_output_folder>/pred_metagenome_unstrat.tsv.gz \
+  -o pathways_contrib \
+  --per_sequence_contrib \
+  --per_sequence_abun picrust2_out/<function_output_folder>/seqtab_norm.tsv.gz \
+  --per_sequence_function <predicted_functions.tsv.gz> \
+  --no_regroup \
+  --map <pathway_mapping_file.tsv>
+
+# Gene abundance data (KEGG Orthologs) output by PICRUSt2:
+# Located in: KO_metagenome_out/pred_metagenome_unstrat.tsv.gz
+# This file contains predicted gene family (KO) abundances per sample,
+# used as input for pathway mapping and further analyses.
 ```
 
 ### Module 2: Network Construction
