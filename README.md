@@ -127,7 +127,7 @@ pathway_pipeline.py \
   --no_regroup \
   --map <pathway_mapping_file.tsv>
 
-# Generate pathway contribution (ASV × pathway)
+# Generate pathway contribution data (ASV × pathway)
 pathway_pipeline.py \
   -i picrust2_out/<function_output_folder>/pred_metagenome_unstrat.tsv.gz \
   -o pathways_contrib \
@@ -139,8 +139,7 @@ pathway_pipeline.py \
 
 # Gene abundance data (KEGG Orthologs) output by PICRUSt2:
 # Located in: KO_metagenome_out/pred_metagenome_unstrat.tsv.gz
-# This file contains predicted gene family (KO) abundances per sample,
-# used as input for pathway mapping and further analyses.
+# This file contains predicted gene family (KO) abundances per sample.
 ```
 
 ### Module 2: Network Construction
