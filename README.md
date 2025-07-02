@@ -18,7 +18,7 @@ This module defines the procedures required to prepare and process the input dat
 
 This section provides a general QIIME2 workflow for processing paired-end 16S rRNA sequencing data. The goal is to generate a feature table and representative sequences for PICRUSt2.
 
-#### **Required Inputs**
+#### **Required inputs**
 
 | File            | Description                         |
 |-----------------|-----------------------------------|
@@ -110,7 +110,7 @@ qiime tools export \
   --output-path taxonomy
 ```
 
-#### **QIIME2 Outputs**
+#### **QIIME2 outputs**
 
 | File                | Description                      |
 |---------------------|---------------------------------|
@@ -122,7 +122,7 @@ qiime tools export \
 
 PICRUSt2 predicts functional profiles from 16S rRNA data. This step uses a feature table and representative sequences from QIIME2.
 
-#### **Required Inputs**
+#### **Required inputs**
 
 | File                | Description                     |
 |---------------------|---------------------------------|
@@ -171,7 +171,7 @@ pathway_pipeline.py \
 # This file contains predicted gene family (KO) abundances per sample.
 ```
 
-#### **PICRUSt2 Outputs**
+#### **PICRUSt2 outputs**
 
 | File                      | Description                            |
 |---------------------------|--------------------------------------|
@@ -179,15 +179,15 @@ pathway_pipeline.py \
 | `path_abun_unstrat.tsv`   | Predicted pathway abundance |
 | `path_abun_contrib.tsv`   | Predicted pathway contribution |
 
-## Module 2: Network Construction
+## Module 2: Network construction
 
-This module constructs a tripartite network linking microbial taxa, metabolic pathways, and metabolites. Below, we provide R functions for constructing each network layer.
+This module constructs a tripartite network linking microbial taxa, functional pathways, and metabolites. Below, we provide R functions for constructing each network layer.
 
 ### <ins>Microbe–pathway network</ins>
 
 The microbe–pathway network is constructed from pathway contribution data, with edges representing the relative contribution of each microbe to specific pathways.
 
-#### **Required Inputs**
+#### **Required inputs**
 
 | File                  | Description                                                                 |
 |-----------------------|-----------------------------------------------------------------------------|
@@ -303,6 +303,7 @@ Example:
 Each row represents a weighted edge linking a microbial taxon (`TaxonID`) to a functional pathway (`FunctionID`) with the strength of the edge defined by the `relative_contribution`.
 - `total_abundance`: The absolute contribution of a given taxon to a pathway summed across all samples.  
 - `total_abundance_all_taxa`: The total combined contribution of all taxa to the same pathway, used as a baseline for normalization.
+- `median_contribution` (and other thresholds like mean or top%) are shown in the table to indicate the filtering cutoff used for each pathway. This helps explain which taxa passed the filtering based on their relative contribution.
 
 ### <ins>Pathway–pathway network construction</ins>
 
