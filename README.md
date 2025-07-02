@@ -335,7 +335,7 @@ construct_microbe_pathway_network(
   metadata_file = "sample_metadata.csv",      
   taxonomy_file = "taxonomy.csv",      
   output_file = "microbe_pathway_network_results", # Output directory for results
-  filtering = "median"
+  filtering = "median" # User can choose from "unfiltered", "mean", "median", "top10%", "top25%", "top50%", "top75%"
 )
 ```
 
