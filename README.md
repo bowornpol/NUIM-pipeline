@@ -14,7 +14,7 @@ This module defines the procedures required to prepare and process the input dat
 
 ### QIIME2 Command Line Example
 
-This section provides a general QIIME2 workflow for processing paired-end 16S rRNA sequencing data. The goal is to generate a feature table and representative sequences for downstream analysis in the NUIM pipeline.
+This section provides a general QIIME2 workflow for processing paired-end 16S rRNA sequencing data. The goal is to generate a feature table and representative sequences for PICRUSt2.
 
 ```bash
 # Activate QIIME2 environment
