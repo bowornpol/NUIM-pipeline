@@ -126,8 +126,9 @@ PICRUSt2 predicts functional profiles from 16S rRNA data. This step uses a featu
 
 | File                | Description                     |
 |---------------------|---------------------------------|
-| `feature-table.biom` | Feature table exported from QIIME2 (`normalized_table.qza`) |
-| `rep_seqs.fasta`    | Representative sequences exported from QIIME2 (`rep_seqs.qza`) |
+| `feature-table.biom` | Feature table exported from QIIME2 |
+| `rep_seqs.fasta`    | Representative sequences exported from QIIME2 |
+| `pathway_gene_map.tsv` | Maps Pathway IDs to their associated Gene/KO IDs. |
 
 <p align="center">
   <img src="figures/PICRUSt2_overview.png" width="700"/>
@@ -154,7 +155,7 @@ pathway_pipeline.py \
   -i picrust2_out/<function_output_folder>/pred_metagenome_unstrat.tsv.gz \
   -o pathways_abundance \
   --no_regroup \
-  --map <pathway_mapping_file.tsv>
+  --map <pathway_gene_map.tsv>
 
 # Generate pathway contribution data (ASV × pathway)
 pathway_pipeline.py \
@@ -164,7 +165,7 @@ pathway_pipeline.py \
   --per_sequence_abun picrust2_out/<function_output_folder>/seqtab_norm.tsv.gz \
   --per_sequence_function <predicted_functions.tsv.gz> \
   --no_regroup \
-  --map <pathway_mapping_file.tsv>
+  --map <pathway_gene_map.tsv>
 
 # Gene abundance data (KEGG Orthologs) output by PICRUSt2:
 # Located in: KO_metagenome_out/pred_metagenome_unstrat.tsv.gz
@@ -193,133 +194,147 @@ The microbe–pathway network is constructed from pathway contribution data, wit
 |---|---|
 | `path_abun_contrib.csv` | Pathway contribution data from PICRUSt2. **Required columns**: `SampleID`, `FeatureID`, `FunctionID`, `taxon_function_abun`. |
 | `sample_metadata.csv` | Sample metadata. **Required for group-specific analysis**; must contain `SampleID` and `class` columns. If not provided or `class` column is missing, data will be processed as one 'overall' group. |
-| `taxa_name.csv` | Taxonomy annotations mapping `FeatureID` to taxonomic name (`TaxonID`). **Required columns**: `FeatureID`, `TaxonID`. |
+| `taxonomy.csv` | Taxonomy annotations mapping `FeatureID` to taxonomic name (`TaxonID`) from QIIME2. **Required columns**: `FeatureID`, `TaxonID`. |
 
 ```r
 library(dplyr)
 
 construct_microbe_pathway_network <- function(
-  contrib_file,
-  metadata_file = NULL, # Made optional
-  taxonomy_file,
-  output_file, # Now explicitly a directory path
-  filtering = c("unfiltered", "mean", "median", "top10%", "top25%", "top50%", "top75%")
+    contrib_file,
+    metadata_file,
+    taxonomy_file,
+    output_file,
+    filtering = c("unfiltered", "mean", "median", "top10%", "top25%", "top50%", "top75%")
 ) {
-  filtering <- match.arg(filtering)
+    filtering <- match.arg(filtering)
+    message("Starting microbe-pathway network construction with filtering: ", filtering)
 
-  # Create output directory if it doesn't exist
-  if (!dir.exists(output_file)) {
-    dir.create(output_file, recursive = TRUE)
-  }
+    # Load data with robust error handling
+    contrib <- tryCatch(read.csv(contrib_file, stringsAsFactors = FALSE), error = function(e) {
+        stop(paste("Error loading contribution file '", contrib_file, "': ", e$message, sep = ""))
+    })
+    metadata <- tryCatch(read.csv(metadata_file, stringsAsFactors = FALSE), error = function(e) {
+        stop(paste("Error loading metadata file '", metadata_file, "': ", e$message, sep = ""))
+    })
+    taxonomy <- tryCatch(read.csv(taxonomy_file, stringsAsFactors = FALSE), error = function(e) {
+        stop(paste("Error loading taxonomy file '", taxonomy_file, "': ", e$message, sep = ""))
+    })
 
-  contrib <- read.csv(contrib_file)
-  taxonomy <- read.csv(taxonomy_file)
-
-  # Initial merge with taxonomy data
-  merged_data <- merge(contrib, taxonomy, by = "FeatureID", all.x = TRUE)
-
-  # Determine if grouping is needed
-  process_by_group <- FALSE
-  groups <- "overall" # Default group name if no grouping
-
-  if (!is.null(metadata_file) && file.exists(metadata_file)) {
-    metadata <- read.csv(metadata_file)
-    
-    if (!"SampleID" %in% colnames(metadata)) {
-      stop("The 'sample_metadata.csv' file must contain a 'SampleID' column.")
-    }
-    
-    if ("class" %in% colnames(metadata)) {
-      # Merge with metadata if 'class' column exists for grouping
-      merged_data <- merge(merged_data, metadata, by = "SampleID")
-      groups <- unique(metadata$class)
-      process_by_group <- TRUE
-      message(paste("Processing data by group(s):", paste(groups, collapse = ", ")))
+    # Ensure 'class' column exists in metadata
+    if (!"class" %in% colnames(metadata)) {
+        metadata$class <- "all"
     } else {
-      message("No 'class' column found in metadata. Processing overall data.")
-    }
-  } else {
-    message("No metadata file provided or file not found. Processing overall data.")
-  }
-
-  # Loop through each group or process overall data
-  for (current_group in groups) {
-    if (process_by_group) {
-      group_data <- merged_data %>% filter(class == current_group)
-      group_suffix <- paste0("_", current_group)
-    } else {
-      group_data <- merged_data
-      group_suffix <- "_overall"
+        metadata$class <- as.character(metadata$class)
     }
 
-    # Calculate total abundance per taxon-function pair within the current group/overall
-    taxon_function_total <- aggregate(
-      taxon_function_abun ~ FunctionID + TaxonID,
-      data = group_data,
-      FUN = sum,
-      na.rm = TRUE
-    )
+    # Ensure ID columns are consistent types (character) for merging
+    if ("SampleID" %in% colnames(contrib)) contrib$SampleID <- as.character(contrib$SampleID)
+    if ("SampleID" %in% colnames(metadata)) metadata$SampleID <- as.character(metadata$SampleID)
+    if ("FeatureID" %in% colnames(contrib)) contrib$FeatureID <- as.character(contrib$FeatureID)
+    if ("FeatureID" %in% colnames(taxonomy)) taxonomy$FeatureID <- as.character(taxonomy$FeatureID)
+    if ("FunctionID" %in% colnames(contrib)) contrib$FunctionID <- as.character(contrib$FunctionID)
+    if ("TaxonID" %in% colnames(taxonomy)) taxonomy$TaxonID <- as.character(taxonomy$TaxonID)
 
-    # Calculate total abundance per function across all taxa in the current group/overall
-    function_total <- aggregate(
-      taxon_function_abun ~ FunctionID,
-      data = taxon_function_total,
-      FUN = sum,
-      na.rm = TRUE
-    )
-    colnames(function_total)[2] <- "total_abundance_all_taxa"
+    # Merge contribution and metadata
+    merged <- merge(contrib, metadata, by = "SampleID", all.x = TRUE)
+    if (nrow(merged) == 0) {
+        stop("Merging contribution and metadata resulted in an empty data frame. Check 'SampleID' column consistency and data in both files.")
+    }
 
-    # Merge to calculate relative contribution
-    taxon_function_total <- merge(taxon_function_total, function_total, by = "FunctionID")
-    taxon_function_total$relative_contribution <- taxon_function_total$taxon_function_abun / taxon_function_total$total_abundance_all_taxa
+    # Select only necessary columns from taxonomy (FeatureID, TaxonID) to avoid conflicts
+    cols_to_keep_from_taxonomy <- c("FeatureID", "TaxonID")
+    if (!all(cols_to_keep_from_taxonomy %in% colnames(taxonomy))) {
+        missing_tax_cols <- setdiff(cols_to_keep_from_taxonomy, colnames(taxonomy))
+        stop(paste("Error: Missing expected columns in taxonomy file for selection: ", paste(missing_tax_cols, collapse = ", ")))
+    }
+    taxonomy_for_merge <- taxonomy %>% select(all_of(cols_to_keep_from_taxonomy))
 
-    # Apply filtering based on user choice
-    if (filtering != "unfiltered") {
-      if (filtering %in% c("mean", "median")) {
-        threshold_df <- aggregate(
-          relative_contribution ~ FunctionID,
-          data = taxon_function_total,
-          FUN = ifelse(filtering == "mean", mean, median),
-          na.rm = TRUE
+    # Merge taxonomy information
+    merged <- merge(merged, taxonomy_for_merge, by = "FeatureID", all.x = TRUE)
+    if (nrow(merged) == 0) {
+        stop("Merging taxonomy resulted in an empty data frame. Check 'FeatureID' column consistency in merged data and taxonomy file.")
+    }
+    if (!"taxon_function_abun" %in% colnames(merged)) {
+        stop("Column 'taxon_function_abun' not found after merging. Please check your 'contrib_file' for this column.")
+    }
+    merged$taxon_function_abun <- as.numeric(merged$taxon_function_abun)
+
+    # Clean unique classes (remove NAs)
+    unique_classes_clean <- unique(merged$class)
+    unique_classes_clean <- unique_classes_clean[!is.na(unique_classes_clean)]
+
+    if (length(unique_classes_clean) == 0) {
+        warning("No valid (non-NA) unique classes found in merged data. Output files will not be generated. Please check your 'metadata.csv' 'class' column and 'SampleID' matching.")
+        return(invisible(NULL))
+    }
+
+    # Set output subdirectory
+    results_dir <- file.path(output_file, "microbe_pathway_network_results")
+    if (!dir.exists(results_dir)) {
+        dir.create(results_dir, recursive = TRUE)
+    }
+
+    # Loop over each valid class
+    for (current_class in unique_classes_clean) {
+        merged_class <- merged %>% filter(class == current_class)
+        if (nrow(merged_class) == 0) { next }
+
+        # Aggregate taxon-function abundance
+        if (!all(c("FunctionID", "TaxonID", "taxon_function_abun") %in% colnames(merged_class))) { next }
+        taxon_function_total_class <- aggregate(
+            taxon_function_abun ~ FunctionID + TaxonID,
+            data = merged_class, sum, na.rm = TRUE
         )
-        colnames(threshold_df)[2] <- "threshold"
-        taxon_function_total <- merge(taxon_function_total, threshold_df, by = "FunctionID")
-        taxon_function_total <- subset(taxon_function_total, relative_contribution >= threshold | is.na(threshold))
+        if (nrow(taxon_function_total_class) == 0) { next }
 
-      } else if (filtering %in% c("top10%", "top25%", "top50%", "top75%")) {
-        percent_map <- c("top10%"=0.10, "top25%"=0.25, "top50%"=0.50, "top75%"=0.75)
-        top_percent <- percent_map[filtering]
+        # Calculate total abundance per function and relative contribution
+        function_total_class <- aggregate(
+            taxon_function_abun ~ FunctionID,
+            data = taxon_function_total_class, sum, na.rm = TRUE
+        )
+        colnames(function_total_class)[2] <- "total_abundance_all_taxa"
+        taxon_function_total_class <- merge(taxon_function_total_class, function_total_class, by = "FunctionID")
+        taxon_function_total_class$relative_contribution <- with(taxon_function_total_class,
+            ifelse(total_abundance_all_taxa == 0, 0, taxon_function_abun / total_abundance_all_taxa)
+        )
 
-        taxon_function_total <- taxon_function_total %>%
-          group_by(FunctionID) %>%
-          arrange(desc(relative_contribution)) %>%
-          mutate(
-            rank = row_number(),
-            n_taxa = n(),
-            cutoff = pmax(ceiling(top_percent * n_taxa), 1)
-          ) %>%
-          filter(rank <= cutoff) %>%
-          ungroup() %>%
-          select(-rank, -n_taxa, -cutoff)
-      }
+        # Apply filtering
+        if (filtering != "unfiltered") {
+            if (filtering %in% c("mean", "median")) {
+                threshold_df <- aggregate(relative_contribution ~ FunctionID, data = taxon_function_total_class,
+                                          FUN = ifelse(filtering == "mean", mean, median), na.rm = TRUE)
+                colnames(threshold_df)[2] <- "threshold"
+                taxon_function_total_class <- merge(taxon_function_total_class, threshold_df, by = "FunctionID")
+                taxon_function_total_class <- subset(taxon_function_total_class, relative_contribution >= threshold | is.na(threshold))
+            } else {
+                percent_map <- c("top10%" = 0.10, "top25%" = 0.25, "top50%" = 0.50, "top75%" = 0.75)
+                top_percent <- percent_map[filtering]
+                taxon_function_total_class <- taxon_function_total_class %>%
+                    group_by(FunctionID) %>% arrange(desc(relative_contribution)) %>%
+                    mutate(rank = row_number(), n_taxa = n(), cutoff = pmax(ceiling(top_percent * n_taxa), 1)) %>%
+                    filter(rank <= cutoff) %>% ungroup() %>% select(-rank, -n_taxa, -cutoff)
+            }
+            if (nrow(taxon_function_total_class) == 0) { next }
+        }
+
+        # Sort and write output
+        taxon_function_total_class <- taxon_function_total_class[order(taxon_function_total_class$FunctionID, -taxon_function_total_class$relative_contribution), ]
+        file_suffix <- gsub("%", "", filtering)
+        output_file_name <- paste0("microbe_pathway_network_", current_class, "_", file_suffix, ".csv")
+        full_output_path <- file.path(results_dir, output_file_name)
+        write.csv(taxon_function_total_class, full_output_path, row.names = FALSE)
+        message("  Saved results for class '", current_class, "' to: ", full_output_path)
     }
-
-    # Order the results
-    taxon_function_total <- taxon_function_total[order(taxon_function_total$FunctionID, -taxon_function_total$relative_contribution), ]
-
-    # Construct output file path for the current group/overall
-    output_path <- file.path(output_file, paste0("microbe_pathway_network", group_suffix, ".csv"))
-    write.csv(taxon_function_total, output_path, row.names = FALSE)
-    message(paste("Output saved to:", output_path))
-  }
+    message("Processing complete.")
+    return(invisible(NULL))
 }
 
 # Example usage:
 construct_microbe_pathway_network(
-  contrib_file = "path_abun_contrib.csv",      # Pathway contribution data file
-  metadata_file = "sample_metadata.csv",       # Sample metadata (required for grouping)
-  taxonomy_file = "taxa_name.csv",             # Taxonomy info per microbial feature
-  output_file = "microbe_pathway_network_results",     # Output directory for results
+  contrib_file = "path_abun_contrib.csv",      
+  metadata_file = "sample_metadata.csv",      
+  taxonomy_file = "taxonomy.csv",      
+  output_file = "microbe_pathway_network_results", # Output directory for results
   filtering = "median"
 )
 ```
@@ -361,24 +376,43 @@ set.seed(123) # Set seed for reproducibility
 construct_pathway_pathway_network <- function(
   abundance_file,
   metadata_file,
-  map_file, 
+  map_file,
   output_file,
-  pvalueCutoff, 
+  pvalueCutoff,
   pAdjustMethod = c("fdr", "holm", "hochberg", "hommel", "bonferroni", "BH", "BY", "none")
 ) {
   # Validate pAdjustMethod input
   pAdjustMethod <- match.arg(pAdjustMethod)
-
+  message("Starting pathway-pathway network construction.")
+  message("Using p-value cutoff: ", pvalueCutoff, " and p-adjustment method: ", pAdjustMethod, ".")
+  
   # Create output directory if it doesn't exist
   if (!dir.exists(output_file)) {
     dir.create(output_file, recursive = TRUE)
+    message("Created output directory: ", output_file)
+  } else {
+    message("Output directory already exists: ", output_file)
   }
-
-  # 1. Load abundance data from provided file (now reads CSV)
-  gene_abundance <- read.csv(abundance_file, header = TRUE, row.names = 1)
   
-  # 2. Load sample metadata (now reads CSV)
-  metadata <- read.csv(metadata_file, header = TRUE)
+  # 1. Load abundance data from provided file
+  message("1. Loading abundance data from: ", abundance_file)
+  gene_abundance <- tryCatch(
+    read.csv(abundance_file, header = TRUE, row.names = 1, stringsAsFactors = FALSE),
+    error = function(e) {
+      stop(paste("Error loading abundance file '", abundance_file, "': ", e$message, sep = ""))
+    }
+  )
+  message("   Loaded abundance data. Dimensions: ", paste(dim(gene_abundance), collapse = "x"))
+  
+  # 2. Load sample metadata
+  message("2. Loading sample metadata from: ", metadata_file)
+  metadata <- tryCatch(
+    read.csv(metadata_file, header = TRUE, stringsAsFactors = FALSE),
+    error = function(e) {
+      stop(paste("Error loading metadata file '", metadata_file, "': ", e$message, sep = ""))
+    }
+  )
+  message("   Loaded metadata. Dimensions: ", paste(dim(metadata), collapse = "x"))
   
   # Ensure the correct SampleID and class columns are present
   if (!"SampleID" %in% colnames(metadata)) {
@@ -389,34 +423,62 @@ construct_pathway_pathway_network <- function(
   }
   
   # 3. Filter metadata samples present in abundance data
-  # Use 'SampleID' for filtering and setting row names
+  message("3. Filtering metadata to match samples in abundance data...")
   sample_ids <- colnames(gene_abundance)
+  initial_metadata_rows <- nrow(metadata)
   metadata <- metadata %>% filter(SampleID %in% sample_ids)
+  if (nrow(metadata) == 0) {
+    stop("No matching samples found between abundance data and metadata after filtering.")
+  }
+  message("   Filtered metadata. Kept ", nrow(metadata), " out of ", initial_metadata_rows, " samples.")
   
   # 4. Set 'condition' factor from 'class' column
+  message("4. Setting 'condition' factor from 'class' column and aligning data...")
   metadata$condition <- as.factor(metadata$class)
   rownames(metadata) <- metadata$SampleID # Use SampleID for row names
   
-  # 5. Round abundance counts for DESeq2 compatibility
+  # 5. Round abundance counts for DESeq2 compatibility and ensure sample order
+  message("5. Rounding abundance counts and aligning sample order for DESeq2...")
   gene_abundance_rounded <- round(gene_abundance)
+  gene_abundance_rounded <- gene_abundance_rounded[, rownames(metadata), drop = FALSE] # drop=FALSE to handle single sample case
+  message("   Abundance data ready for DESeq2. Final dimensions: ", paste(dim(gene_abundance_rounded), collapse = "x"))
   
-  # Ensure sample order matches between countData and colData
-  gene_abundance_rounded <- gene_abundance_rounded[, rownames(metadata)]
-
   # 6. Create DESeq2 dataset and run differential expression analysis
-  dds <- DESeqDataSetFromMatrix(countData = gene_abundance_rounded,
-                                colData = metadata,
-                                design = ~ condition)
-  dds <- DESeq(dds)
+  message("6. Creating DESeq2 dataset and running differential expression analysis...")
+  dds <- tryCatch(
+    DESeqDataSetFromMatrix(countData = gene_abundance_rounded,
+                           colData = metadata,
+                           design = ~ condition),
+    error = function(e) {
+      stop(paste("Error creating DESeq2 dataset: ", e$message, ". Check abundance data (must be integers) and metadata consistency.", sep = ""))
+    }
+  )
+  
+  dds <- tryCatch(
+    DESeq(dds),
+    error = function(e) {
+      stop(paste("Error running DESeq2 analysis: ", e$message, ". This might happen if groups have zero variance, or too few samples.", sep = ""))
+    }
+  )
+  message("   DESeq2 analysis complete.")
   
   # 7. Get all pairwise condition comparisons
   conditions <- levels(metadata$condition)
+  if (length(conditions) < 2) {
+    stop("Less than two unique conditions found in metadata 'class' column. Cannot perform pairwise comparisons.")
+  }
   comparisons <- combn(conditions, 2, simplify = FALSE)
+  message("7. Identified ", length(comparisons), " pairwise comparisons: ",
+          paste(sapply(comparisons, function(x) paste(x, collapse = " vs ")), collapse = ", "))
   
-  # 8. Load pathway-to-gene mapping and reshape into TERM2GENE format (now reads CSV)
-  # The input file format is: V1 (pathway_id) V2 (gene_id1) V3 (gene_id2) ...
-  # This is the direct format for TERM2GENE where TERM is V1 and GENE are others.
-  map_raw <- read.csv(map_file, header = FALSE, fill = TRUE, stringsAsFactors = FALSE, skip = 1)
+  # 8. Load pathway-to-gene mapping and reshape into TERM2GENE format
+  message("8. Loading pathway-to-gene mapping from: ", map_file)
+  map_raw <- tryCatch(
+    read.csv(map_file, header = FALSE, fill = TRUE, stringsAsFactors = FALSE, skip = 1),
+    error = function(e) {
+      stop(paste("Error loading map file '", map_file, "': ", e$message, ". Ensure it's a valid CSV.", sep = ""))
+    }
+  )
   
   TERM2GENE <- map_raw %>%
     gather(key = "temp_col", value = "gene", -V1) %>% # V1 becomes 'term', others become 'gene'
@@ -424,12 +486,21 @@ construct_pathway_pathway_network <- function(
     filter(gene != "") %>% # Remove empty gene entries
     distinct() # Ensure unique pathway-gene pairs
   
+  if (nrow(TERM2GENE) == 0) {
+    stop("No valid pathway-gene mappings found after processing '", map_file, "'. Check file format.")
+  }
+  message("   Processed ", nrow(TERM2GENE), " unique pathway-gene mappings.")
+  
   gsea_results_list <- list()
   
   # 9. Loop over each pairwise comparison to run GSEA
-  for (comp in comparisons) {
+  message("9. Running GSEA for each pairwise comparison...")
+  for (i in seq_along(comparisons)) {
+    comp <- comparisons[[i]]
     cond1 <- comp[1]
     cond2 <- comp[2]
+    comparison_name <- paste0(cond1, "_vs_", cond2)
+    message("   Processing comparison (", i, "/", length(comparisons), "): ", cond2, " vs ", cond1)
     
     # Get DESeq2 results for contrast cond2 vs cond1
     res <- results(dds, contrast = c("condition", cond2, cond1))
@@ -437,71 +508,114 @@ construct_pathway_pathway_network <- function(
     # Prepare ranked gene list: sign(log2FoldChange) * -log10(pvalue)
     ranked_df <- as.data.frame(res[, c("log2FoldChange", "pvalue")])
     ranked_df <- ranked_df[!is.na(ranked_df$log2FoldChange) & !is.na(ranked_df$pvalue), ]
+    
+    if (nrow(ranked_df) == 0) {
+      warning("No valid log2FoldChange or pvalue for comparison ", comparison_name, ". Skipping GSEA.")
+      next
+    }
+    
+    # Handle cases where pvalue might be 0, leading to -log10(0) = Inf
+    # A common approach is to set a minimum p-value
+    min_pvalue_for_log <- min(ranked_df$pvalue[ranked_df$pvalue > 0], na.rm = TRUE) / 2
+    ranked_df$pvalue[ranked_df$pvalue == 0] <- min_pvalue_for_log
+    
     ranked_df$rank <- sign(ranked_df$log2FoldChange) * -log10(ranked_df$pvalue)
     ranked_df <- ranked_df[order(ranked_df$rank, decreasing = TRUE), ]
     geneList <- setNames(ranked_df$rank, rownames(ranked_df))
     
     # Run GSEA using clusterProfiler
-    gsea_res <- GSEA(geneList = geneList,
-                     TERM2GENE = TERM2GENE,
-                     pvalueCutoff = pvalueCutoff,
-                     pAdjustMethod = pAdjustMethod,
-                     seed = TRUE,
-                     verbose = FALSE)
+    gsea_res <- tryCatch(
+      GSEA(geneList = geneList,
+           TERM2GENE = TERM2GENE,
+           pvalueCutoff = pvalueCutoff,
+           pAdjustMethod = pAdjustMethod,
+           seed = TRUE,
+           verbose = FALSE),
+      error = function(e) {
+        warning(paste("GSEA failed for comparison ", comparison_name, ": ", e$message, ". Skipping.", sep = ""))
+        return(NULL)
+      }
+    )
+    
+    if (is.null(gsea_res) || nrow(as.data.frame(gsea_res)) == 0) {
+      message("   No significant GSEA results found for ", comparison_name, ".")
+      next
+    }
     
     # Save GSEA results dataframe
     gsea_df <- as.data.frame(gsea_res)
-    key <- paste0(cond1, "_vs_", cond2)
+    key <- comparison_name
     gsea_results_list[[key]] <- gsea_df
     
     # Construct full output path for GSEA results
     gsea_output_path <- file.path(output_file, paste0("gsea_results_", key, ".csv"))
     write.csv(gsea_df, gsea_output_path, row.names = FALSE)
+    message("   Saved GSEA results for ", comparison_name, " to: ", gsea_output_path)
   }
   
   # 10. Compute Jaccard indices between pathways within each comparison's GSEA results
+  message("10. Computing Jaccard indices for overlapping pathways...")
   jaccard_results_list <- list()
   
-  for (key in names(gsea_results_list)) {
-    gsea_df <- gsea_results_list[[key]]
-    gene_sets <- strsplit(as.character(gsea_df$core_enrichment), "/")
-    gene_sets <- lapply(gene_sets, function(x) unique(na.omit(x)))
-    
-    n <- length(gene_sets)
-    res_list <- list()
-    
-    if (n < 2) { # Ensure there are at least two pathways to compare
-      message(paste("Less than two significant pathways for comparison:", key, ". Skipping Jaccard index calculation."))
-      next
-    }
-
-    for (i in 1:(n-1)) {
-      for (j in (i+1):n) {
-        genes_i <- gene_sets[[i]]
-        genes_j <- gene_sets[[j]]
-        intersection <- length(intersect(genes_i, genes_j))
-        union <- length(union(genes_i, genes_j))
-        jaccard <- ifelse(union == 0, 0, intersection / union)
-        
-        if (jaccard > 0) {
-          res_list[[length(res_list) + 1]] <- data.frame(
-            pathway_1 = gsea_df$ID[i],
-            pathway_2 = gsea_df$ID[j],
-            jaccard_index = jaccard,
-            comparison = key,
-            stringsAsFactors = FALSE
-          )
+  if (length(gsea_results_list) == 0) {
+    message("   No GSEA results to compute Jaccard indices. Skipping.")
+  } else {
+    for (key in names(gsea_results_list)) {
+      message("   Calculating Jaccard index for comparison: ", key)
+      gsea_df <- gsea_results_list[[key]]
+      
+      # Filter for pathways with core enrichment genes (i.e., not empty or NA)
+      gsea_df_filtered <- gsea_df %>% filter(!is.na(core_enrichment) & core_enrichment != "")
+      gene_sets <- strsplit(as.character(gsea_df_filtered$core_enrichment), "/")
+      gene_sets <- lapply(gene_sets, function(x) unique(na.omit(x))) # Ensure unique genes per set and remove NAs
+      
+      n <- length(gene_sets)
+      res_list <- list()
+      
+      if (n < 2) { # Ensure there are at least two pathways to compare
+        message(paste("   Less than two significant pathways with core enrichment for comparison '", key, "'. Skipping Jaccard index calculation for this comparison.", sep = ""))
+        next
+      }
+      
+      for (i in 1:(n - 1)) {
+        for (j in (i + 1):n) {
+          genes_i <- gene_sets[[i]]
+          genes_j <- gene_sets[[j]]
+          
+          # Skip if either gene set is empty
+          if (length(genes_i) == 0 || length(genes_j) == 0) {
+            next
+          }
+          
+          intersection <- length(intersect(genes_i, genes_j))
+          union <- length(union(genes_i, genes_j))
+          jaccard <- ifelse(union == 0, 0, intersection / union)
+          
+          if (jaccard > 0) {
+            res_list[[length(res_list) + 1]] <- data.frame(
+              pathway_1 = gsea_df_filtered$ID[i],
+              pathway_2 = gsea_df_filtered$ID[j],
+              jaccard_index = jaccard,
+              comparison = key,
+              stringsAsFactors = FALSE
+            )
+          }
         }
       }
+      
+      if (length(res_list) > 0) {
+        jaccard_df <- do.call(rbind, res_list)
+        # Construct full output path for Jaccard results
+        jaccard_output_path <- file.path(output_file, paste0("pathway_jaccard_", key, ".csv"))
+        write.csv(jaccard_df, jaccard_output_path, row.names = FALSE)
+        message("   Saved Jaccard index results for ", key, " to: ", jaccard_output_path)
+      } else {
+        message("   No Jaccard indices > 0 found for comparison '", key, "'. Skipping saving file.")
+      }
     }
-    
-    jaccard_df <- do.call(rbind, res_list)
-    # Construct full output path for Jaccard results
-    jaccard_output_path <- file.path(output_file, paste0("pathway_jaccard_", key, ".csv"))
-    write.csv(jaccard_df, jaccard_output_path, row.names = FALSE)
-    jaccard_results_list[[key]] <- jaccard_df
   }
   
+  message("Pathway-pathway network construction complete.")
   # Return GSEA and Jaccard results for further use
   return(list(gsea = gsea_results_list, jaccard = jaccard_results_list))
 }
