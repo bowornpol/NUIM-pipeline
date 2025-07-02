@@ -2,7 +2,9 @@
 
 We developed NUIM, a modular, network-based framework for integrating microbiome and metabolome data systematically. NUIM consists of three modules: (1) data preparation and processing, (2) network construction, and (3) network analysis.
 
-![Overview of the NUIM pipeline](figures/NUIM_overview.png)
+<p align="center">
+  <img src="figures/NUIM_overview.png" width="500"/>
+</p>
 
 ### Module 1: Data Preparation and Processing
 
@@ -104,7 +106,7 @@ PICRUSt2 predicts functional profiles from 16S rRNA data. This step uses represe
 - `dna-sequences.fasta`: Representative sequences exported from QIIME2 (`rep_seqs.qza`)
 - `feature-table.biom`: Feature table exported from QIIME2 (`normalized_table.qza`, converted to BIOM format)
 
-![Overview of the PICRUSt2 workflow](figures/PICRUSt2_overview.png =50x150)
+![Overview of the PICRUSt2 workflow](figures/PICRUSt2_overview.png)
 
 ### PICRUSt2 Command Line Example
 
