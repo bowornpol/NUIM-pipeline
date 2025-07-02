@@ -209,20 +209,15 @@ construct_microbe_pathway_network <- function(
   output_file = "microbe_pathway_network.csv",
   filtering = c("unfiltered", "mean", "median", "top10%", "top25%", "top50%", "top75%")
 ) {
-  # Match filtering argument to allowed options
   filtering <- match.arg(filtering)
 
-  # Read input CSV files
-  contrib <- read.csv(contrib_file)        # Columns: SampleID, FeatureID, FunctionID, taxon_function_abun, etc.
-  metadata <- read.csv(metadata_file)      # Columns: SampleID, group info (optional)
-  taxonomy <- read.csv(taxonomy_file)      # Columns: FeatureID, TaxonID, taxonomy details
+  contrib <- read.csv(contrib_file)
+  metadata <- read.csv(metadata_file)
+  taxonomy <- read.csv(taxonomy_file)
 
-  # Merge contribution data with metadata by SampleID
   merged <- merge(contrib, metadata, by = "SampleID")
-  # Merge the above result with taxonomy data by FeatureID (microbial feature identifier)
   merged <- merge(merged, taxonomy, by = "FeatureID", all.x = TRUE)
 
-  # Summarize total abundance of each function contributed by each taxon
   taxon_function_total <- aggregate(
     taxon_function_abun ~ FunctionID + TaxonID,
     data = merged,
@@ -230,7 +225,6 @@ construct_microbe_pathway_network <- function(
     na.rm = TRUE
   )
 
-  # Calculate total abundance of each function across all taxa (denominator for relative contribution)
   function_total <- aggregate(
     taxon_function_abun ~ FunctionID,
     data = taxon_function_total,
@@ -239,14 +233,11 @@ construct_microbe_pathway_network <- function(
   )
   colnames(function_total)[2] <- "total_abundance_all_taxa"
 
-  # Merge total abundance with taxon-function abundance to compute relative contribution
   taxon_function_total <- merge(taxon_function_total, function_total, by = "FunctionID")
   taxon_function_total$relative_contribution <- taxon_function_total$taxon_function_abun / taxon_function_total$total_abundance_all_taxa
 
-  # Filter data based on user-selected threshold method
   if (filtering != "unfiltered") {
     if (filtering %in% c("mean", "median")) {
-      # Calculate mean or median relative contribution per function
       threshold_df <- aggregate(
         relative_contribution ~ FunctionID,
         data = taxon_function_total,
@@ -254,27 +245,31 @@ construct_microbe_pathway_network <- function(
         na.rm = TRUE
       )
       colnames(threshold_df)[2] <- "threshold"
-      # Filter to keep only taxa with relative contribution >= threshold
       taxon_function_total <- merge(taxon_function_total, threshold_df, by = "FunctionID")
       taxon_function_total <- subset(taxon_function_total, relative_contribution >= threshold | is.na(threshold))
-    } else if (grepl("^top", filtering)) {
-      # For topX% filters: keep taxa contributing cumulatively up to the specified top percentage
-      top_percent <- as.numeric(sub("top(\\d+)%", "\\1", filtering)) / 100
-      taxon_function_total <- do.call(rbind, lapply(split(taxon_function_total, taxon_function_total$FunctionID), function(df) {
-        # Sort by relative contribution descending
-        df <- df[order(-df$relative_contribution), ]
-        # Calculate cumulative sum
-        df$cum_sum <- cumsum(df$relative_contribution)
-        # Keep rows with cumulative sum less than or equal to top_percent
-        df[df$cum_sum <= top_percent, ]
-      }))
+
+    } else if (filtering %in% c("top10%", "top25%", "top50%", "top75%")) {
+      # Create rank-based cutoff
+      percent_map <- c("top10%"=0.10, "top25%"=0.25, "top50%"=0.50, "top75%"=0.75)
+      top_percent <- percent_map[filtering]
+
+      # Arrange and filter by rank within each FunctionID
+      taxon_function_total <- taxon_function_total %>%
+        group_by(FunctionID) %>%
+        arrange(desc(relative_contribution)) %>%
+        mutate(
+          rank = row_number(),
+          n_taxa = n(),
+          cutoff = pmax(ceiling(top_percent * n_taxa), 1)
+        ) %>%
+        filter(rank <= cutoff) %>%
+        ungroup() %>%
+        select(-rank, -n_taxa, -cutoff)
     }
   }
 
-  # Order final results by FunctionID and descending relative contribution
   taxon_function_total <- taxon_function_total[order(taxon_function_total$FunctionID, -taxon_function_total$relative_contribution), ]
 
-  # Save filtered and ordered data to CSV
   write.csv(taxon_function_total, output_file, row.names = FALSE)
 }
 
