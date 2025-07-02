@@ -184,7 +184,7 @@ pathway_pipeline.py \
 
 This module constructs a tripartite network linking microbial taxa, functional pathways, and metabolites. Follow the steps below to construct each network layer using the provided R functions:
 
-### <ins>Step 1: Microbe–pathway network construction</ins>
+### <ins>STEP 1: Microbe–pathway network construction</ins>
 
 The microbe–pathway network is constructed from pathway contribution data, with edges representing the relative contribution of each microbe to specific pathways.
 
@@ -409,7 +409,7 @@ Each row represents a weighted edge linking a microbial taxon (`TaxonID`) to a f
 - `total_abundance_all_taxa`: The total combined contribution of all taxa to the same pathway, used as a baseline for normalization.
 - `median_contribution` (and other thresholds like mean or top%) are shown in the table to indicate the filtering cutoff used for each pathway. This helps explain which taxa passed the filtering based on their relative contribution.
 
-### <ins>Step 2: Pathway–pathway network construction</ins>
+### <ins>STEP 2: Pathway–pathway network construction</ins>
 
 The pathway–pathway network is constructed using pathways identified as significant through Gene Set Enrichment Analysis (GSEA). Edges between pathways are defined based on shared genes, and Jaccard indices represent edge weights.
 
