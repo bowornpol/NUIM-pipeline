@@ -380,7 +380,7 @@ construct_microbe_pathway_network <- function(
     write.csv(taxon_function_total_class, full_output_path, row.names = FALSE)
     message("  Saved results for class '", current_class, "' to: ", full_output_path)
   }
-  message("Processing complete.")
+  message("Microbe-pathway network construction complete.")
   return(invisible(NULL))
 }
 
@@ -434,12 +434,16 @@ construct_pathway_pathway_network <- function(
   map_file,
   output_file,
   pvalueCutoff,
-  pAdjustMethod = c("fdr", "holm", "hochberg", "hommel", "bonferroni", "BH", "BY", "none")
+  pAdjustMethod = c("fdr", "holm", "hochberg", "hommel", "bonferroni", "BH", "BY", "none"),
+  rank_by = c("signed_log_pvalue", "log2FoldChange") 
 ) {
-  # Validate pAdjustMethod input
+  # Validate inputs
   pAdjustMethod <- match.arg(pAdjustMethod)
+  rank_by <- match.arg(rank_by) # Validate new parameter
+  
   message("Starting pathway-pathway network construction.")
   message("Using p-value cutoff: ", pvalueCutoff, " and p-adjustment method: ", pAdjustMethod, ".")
+  message("Genes will be ranked by: ", rank_by, ".") # Status message for ranking method
   
   # Create output directory if it doesn't exist
   if (!dir.exists(output_file)) {
@@ -560,8 +564,9 @@ construct_pathway_pathway_network <- function(
     # Get DESeq2 results for contrast cond2 vs cond1
     res <- results(dds, contrast = c("condition", cond2, cond1))
     
-    # Prepare ranked gene list: sign(log2FoldChange) * -log10(pvalue)
+    # Prepare ranked gene list
     ranked_df <- as.data.frame(res[, c("log2FoldChange", "pvalue")])
+    # Filter out NA values for relevant columns before ranking
     ranked_df <- ranked_df[!is.na(ranked_df$log2FoldChange) & !is.na(ranked_df$pvalue), ]
     
     if (nrow(ranked_df) == 0) {
@@ -569,12 +574,18 @@ construct_pathway_pathway_network <- function(
       next
     }
     
-    # Handle cases where pvalue might be 0, leading to -log10(0) = Inf
-    # A common approach is to set a minimum p-value
-    min_pvalue_for_log <- min(ranked_df$pvalue[ranked_df$pvalue > 0], na.rm = TRUE) / 2
-    ranked_df$pvalue[ranked_df$pvalue == 0] <- min_pvalue_for_log
+    # Apply chosen ranking method
+    if (rank_by == "signed_log_pvalue") {
+      # Handle cases where pvalue might be 0, leading to -log10(0) = Inf
+      min_pvalue_for_log <- min(ranked_df$pvalue[ranked_df$pvalue > 0], na.rm = TRUE) / 2
+      ranked_df$pvalue[ranked_df$pvalue == 0] <- min_pvalue_for_log
+      ranked_df$rank <- sign(ranked_df$log2FoldChange) * -log10(ranked_df$pvalue)
+      message("   Ranking by signed -log10(p-value) for ", comparison_name, ".")
+    } else if (rank_by == "log2FoldChange") {
+      ranked_df$rank <- ranked_df$log2FoldChange
+      message("   Ranking by log2FoldChange for ", comparison_name, ".")
+    }
     
-    ranked_df$rank <- sign(ranked_df$log2FoldChange) * -log10(ranked_df$pvalue)
     ranked_df <- ranked_df[order(ranked_df$rank, decreasing = TRUE), ]
     geneList <- setNames(ranked_df$rank, rownames(ranked_df))
     
@@ -669,7 +680,6 @@ construct_pathway_pathway_network <- function(
       }
     }
   }
-  
   message("Pathway-pathway network construction complete.")
 }
 
@@ -680,7 +690,8 @@ construct_pathway_pathway_network(
    map_file = "pathway_gene_map.csv",              
    output_file = "pathway_pathway_network_results", # Output directory for results       
    pvalueCutoff = 0.05, # User MUST specify this value, e.g., 0.05
-   pAdjustMethod = "BH" # User can choose from "holm", "hochberg", "hommel", "bonferroni", "BH", "BY", "fdr", "none"
+   pAdjustMethod = "BH", # User can choose from "holm", "hochberg", "hommel", "bonferroni", "BH", "BY", "fdr", "none"
+   rank_by = "signed_log_pvalue" # User can choose from "signed_log_pvalue" or "log2FoldChange"
 )
 ```
 #### **Example output**
