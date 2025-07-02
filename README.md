@@ -301,6 +301,8 @@ Example:
 | ko00720    | g__Blautia | 14084.3 | 16493.0 | 0.854 | 0.0055 |
 
 Each row represents a weighted edge linking a microbial taxon (`TaxonID`) to a functional pathway (`FunctionID`) with the strength of the edge defined by the `relative_contribution`.
+- `total_abundance`: The absolute contribution of a given taxon to a pathway summed across all samples.  
+- `total_abundance_all_taxa`: The total combined contribution of all taxa to the same pathway, used as a baseline for normalization.
 
 ### <ins>Pathway–pathway network construction</ins>
 
