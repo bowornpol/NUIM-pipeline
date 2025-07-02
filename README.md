@@ -84,7 +84,15 @@ qiime feature-table rarefy \
   --p-sampling-depth <depth_to_rarefy> \
   --o-rarefied-table normalized_table.qza
 
-# STEP 7: Export data for PICRUSt2
+# STEP 7: Taxonomic classification
+# Use a pre-trained classifier appropriate for your 16S region (e.g., SILVA, Greengenes).
+
+qiime feature-classifier classify-sklearn \
+  --i-classifier <pretrained_classifier.qza> \
+  --i-reads filtered_rep_seqs.qza \
+  --o-classification taxonomy.qza
+
+# STEP 8: Export data for PICRUSt2
 # Export the final feature table and representative sequences for functional prediction.
 
 qiime tools export \
@@ -94,16 +102,21 @@ qiime tools export \
 qiime tools export \
   --input-path rep_seqs.qza \
   --output-path rep_seqs
+
+qiime tools export \
+  --input-path taxonomy.qza \
+  --output-path taxonomy
 ```
 
 #### **QIIME2 Outputs**
 
 - `feature-table.biom`: Feature (ASV) count table.  
-- `rep_seqs.fasta`: Representative sequences for each ASV.  
+- `rep_seqs.fasta`: Representative sequences for each ASV.
+- `taxonomy.tsv`: Taxonomic assignment of each ASV  
 
 ### <ins>PICRUSt2 workflow</ins>
 
-PICRUSt2 predicts functional profiles from 16S rRNA data. This step uses representative sequences and a feature table from QIIME2.
+PICRUSt2 predicts functional profiles from 16S rRNA data. This step uses a feature table and representative sequences from QIIME2.
 
 #### **Required Inputs**
 
@@ -166,6 +179,11 @@ This module constructs a tripartite network linking microbial taxa, metabolic pa
 - The pathway–pathway network is constructed using pathways identified as significant through Gene Set Enrichment Analysis (GSEA). Edges between pathways are defined based on shared genes, and Jaccard indices represent edge weights.  
 - The pathway–metabolite network is constructed by calculating pairwise correlation (e.g., Spearman or Pearson) between pathway abundance and metabolite concentrations.  
 - These networks are finally integrated through connected pathway nodes to construct a multi-layered network.
+
+### <ins>Microbe–pathway network construction</ins>
+### <ins>Pathway–pathway network construction</ins>
+### <ins>Pathway–metabolite network construction</ins>
+### <ins>Multi-layered network</ins>
 
 ## Module 3: Network Analysis
 
