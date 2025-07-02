@@ -101,8 +101,13 @@ qiime tools export \
 
 qiime tools export \
   --input-path rep_seqs.qza \
-  --output-path dna-sequences
+  --output-path rep_seqs
 ```
+
+#### **QIIME2 Outputs**
+
+- `feature-table.biom`: Feature (ASV) count table.  
+- `rep_seqs.fasta`: Representative sequences for each ASV.  
 
 ### PICRUSt2 command line example
 
@@ -110,8 +115,8 @@ PICRUSt2 predicts functional profiles from 16S rRNA data. This step uses represe
 
 #### **Required Inputs**
 
-- `dna-sequences.fasta`: Representative sequences exported from QIIME2 (`rep_seqs.qza`)
 - `feature-table.biom`: Feature table exported from QIIME2 (`normalized_table.qza`)
+- `rep_seqs.fasta`: Representative sequences exported from QIIME2 (`rep_seqs.qza`)
 
 <p align="center">
   <img src="figures/PICRUSt2_overview.png" width="700"/>
@@ -123,7 +128,7 @@ conda activate picrust2
 
 # Run PICRUSt2 pipeline (no NSTI filtering)
 picrust2_pipeline.py \
-  -s dna-sequences.fasta \
+  -s rep_seqs.fasta \
   -i feature-table.biom \
   -o picrust2_out_nsti_default
 
@@ -154,6 +159,12 @@ pathway_pipeline.py \
 # Located in: KO_metagenome_out/pred_metagenome_unstrat.tsv.gz
 # This file contains predicted gene family (KO) abundances per sample.
 ```
+
+#### **PICRUSt2 Outputs**
+
+- `KO_metagenome_out/pred_metagenome_unstrat.tsv.gz`: Predicted gene abundance. 
+- `pathways_abundance/path_abun_unstrat.tsv.gz`: Predicted pathway abundance.  
+- `pathways_contrib/path_abun_contrib.tsv.gz`: Predicted pathway contribution.
 
 ### Module 2: Network Construction
 
