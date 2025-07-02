@@ -9,7 +9,7 @@ We developed NUIM, a modular, network-based framework for integrating microbiome
 
 This module defines the procedures required to prepare and process the input data for downstream network construction and analysis.
 
-- Input data includes microbial sequencing reads in FASTQ format and a metabolite concentration table.  
+- Input data includes `microbial sequencing reads in FASTQ format` and `metabolite concentration table`.  
 - Microbiome data processing involves the use of QIIME2 to generate a feature table and representative sequences. These outputs are subsequently processed using PICRUSt2 for functional prediction, yielding gene abundance, pathway abundance, and pathway contribution data.  
 - Although metabolome data processing may vary depending on user preference and experimental design, NUIM assumes that metabolite concentrations have been appropriately processed by standard practice. For example, users may employ established platforms such as Metabox or MetaboAnalyst to perform normalization, transformation, and quality control of metabolomics data.
 
