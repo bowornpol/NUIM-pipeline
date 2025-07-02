@@ -189,14 +189,18 @@ The microbe–pathway network is constructed from pathway contribution data, wit
 
 #### **Required Inputs**
 
-| File                | Description                     |
-|---------------------|---------------------------------|
+| File                  | Description                                                                 |
+|-----------------------|-----------------------------------------------------------------------------|
+| `path_abun_contrib.csv` | Pathway contribution data fdrom PICRUSt2  
+**Required columns**: `SampleID`, `FeatureID`, `FunctionID`, `taxon_function_abun`. |
+| `sample_metadata.csv`   | Sample metadata. Used when there are multiple experimental groups.  
+**Required column**: `SampleID`. |
+| `taxa_name.csv`         | Taxonomy annotations mapping `FeatureID` to taxonomic name (`TaxonID`).  
+**Required columns**: `FeatureID`, `TaxonID`. |
 
+> `sample_metadata.csv` is optional if group-specific processing is not needed.  
+> `taxa_name.csv` is required to assign taxonomic labels to features.
 
-```r
-### Module 2: Microbe–Pathway Network Construction
-
-The microbe–pathway network is constructed from pathway contribution data, with edges representing the relative contribution of each microbe to specific pathways.
 
 ```r
 library(dplyr)
@@ -289,8 +293,9 @@ construct_microbe_pathway_network(
 
 #### **Outputs**
 
-| File                | Description                     |
-|---------------------|---------------------------------|
+| File                        | Description                                                                 |
+|-----------------------------|-----------------------------------------------------------------------------|
+| `microbe_pathway_network.csv` | A microbe-pathway network table with relative contribution values. |
 
 ### <ins>Pathway–pathway network construction</ins>
 
