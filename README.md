@@ -18,6 +18,11 @@ This module defines the procedures required to prepare and process the input dat
 
 This section provides a general QIIME2 workflow for processing paired-end 16S rRNA sequencing data. The goal is to generate a feature table and representative sequences for PICRUSt2.
 
+#### **Required Inputs**
+
+- `FASTQ` files: Raw paired-end sequencing reads for each sample.  
+- `manifest.csv`: Lists sample IDs and the paths to their FASTQ files.  
+
 <p align="center">
   <img src="figures/QIIME2_overview.png" width="500"/>
 </p>
