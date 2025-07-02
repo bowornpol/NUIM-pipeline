@@ -1,35 +1,33 @@
-# NUIM Pipeline
+## Introduction: Overview of NUIM Pipeline
 
-**Network-based Utility for Integrating Microbiome and metabolome data (NUIM)**
+**NUIM: Network-based utility for integrating microbiome and metabolome data**
 
-## Installation
-Install the required R packages:
+We developed NUIM, a modular, network-based framework for integrating microbiome and metabolome data systematically. NUIM consists of three modules:  
+(1) data preparation and processing
+(2) network construction
+(3) network analysis 
 
-```r
-install.packages(c("igraph", "tidyverse", "vegan"))
+### Module 1: Data Preparation and Processing
 
-```
+This module defines the procedures required to prepare and process the input data for downstream network construction and analysis.
 
-#### 5. **(Optional) Add a License**
-To allow others to use your code, add a license like MIT, GPL, or Apache. GitHub will help you choose one.
+- Input data includes microbial sequencing reads in FASTQ format and a metabolite concentration table.  
+- Microbiome data processing involves the use of QIIME2 to generate a feature table and representative sequences. These outputs are subsequently processed using PICRUSt2 for functional prediction, yielding gene abundance, pathway abundance, and pathway contribution data.  
+- Although metabolome data processing may vary depending on user preference and experimental design, NUIM assumes that metabolite concentrations have been appropriately processed by standard practice. For example, users may employ established platforms such as Metabox or MetaboAnalyst to perform normalization, transformation, and quality control of metabolomics data.
 
+### Module 2: Network Construction
 
-Would you like me to help you generate a template `README.md`, `.gitignore`, or example `run_network.sh` file?
+This module constructs a tripartite network linking microbial taxa, metabolic pathways, and metabolites. The network is composed of the following components:
 
-| Package        | Description                                                                                                                       |
-|----------------|-----------------------------------------------------------------------------------------------------------------------------------|
-| aplot          | Create interactive plots                                                                                                          |
-| dplyr          | A fast consistent tool for working with data frame like objects both in memory and out of memory                                  |
-| ggplot2        | An implementation of the Grammar of Graphics in R                                                                                 |
-| grid           | A rewrite of the graphics layout capabilities of R                                                                                |
-| MicrobiomeStat | Statistical analysis of microbiome data                                                                                           |
-| readr          | Read rectangular data (csv tsv fwf) into R                                                                                        |
-| stats          | The R Stats Package                                                                                                               |
-| tibble         | Simple Data Frames                                                                                                                |
-| tidyr          | Easily tidy data with spread() and gather() functions                                                                             |
-| ggprism        | Interactive 3D plots with 'prism' graphics                                                                                        |
-| cowplot        | Streamlined Plot Theme and Plot Annotations for 'ggplot2'                                                                         |
-| ggforce        | Easily add secondary axes, zooms, and image overlays to 'ggplot2'                                                                 |
-| ggplotify      | Convert complex plots into 'grob' or 'ggplot' objects                                                                             |
-| magrittr       | A Forward-Pipe Operator for R                                                                                                     |
-| utils          | The R Utils Package                                                                                                               |
+- The microbe–pathway network is constructed from pathway contribution data, with edges representing the relative contribution of each microbe to specific pathways.  
+- The pathway–pathway network is constructed using pathways identified as significant through Gene Set Enrichment Analysis (GSEA). Edges between pathways are defined based on shared genes, and Jaccard indices represent edge weights.  
+- The pathway–metabolite network is constructed by calculating pairwise correlation (e.g., Spearman or Pearson) between pathway abundance and metabolite concentrations.  
+- These networks are finally integrated through connected pathway nodes to construct a multi-layered network.
+
+### Module 3: Network Analysis
+
+This module provides three network analyses designed to identify context-specific associations:
+
+- The hub identification uses the Maximal Clique Centrality (MCC) algorithm to identify key microbial pathways.  
+- The pathfinding uses the Dijkstra's algorithm to identify the shortest path between the selected source and target nodes.  
+- The node prioritization uses the Laplacian Heat Diffusion (LHD) algorithm to identify microbe-associated metabolites.
