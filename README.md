@@ -22,8 +22,8 @@ This section provides a general QIIME2 workflow for processing paired-end 16S rR
 
 | File            | Description                         |
 |-----------------|-----------------------------------|
-| `FASTQ`         | Raw paired-end sequencing reads   |
-| `manifest.tsv`  | Mapping of sample IDs to FASTQ files |  
+| `FASTQ`         | Raw paired-end sequencing reads. |
+| `manifest.tsv`  | Mapping of sample IDs to FASTQ files. |  
 
 <p align="center">
   <img src="figures/QIIME2_overview.png" width="500"/>
@@ -114,9 +114,9 @@ qiime tools export \
 
 | File                | Description                      |
 |---------------------|---------------------------------|
-| `feature-table.biom` | Feature (ASV) count table        |
-| `rep_seqs.fasta`    | Representative sequences         |
-| `taxonomy.tsv`      | Taxonomic assignment of ASVs | 
+| `feature-table.biom` | Feature (ASV) count table. |
+| `rep_seqs.fasta`    | Representative sequences. |
+| `taxonomy.tsv`      | Taxonomic assignment of ASVs. | 
 
 ### <ins>PICRUSt2 workflow</ins>
 
@@ -126,9 +126,9 @@ PICRUSt2 predicts functional profiles from 16S rRNA data. This step uses a featu
 
 | File                | Description                     |
 |---------------------|---------------------------------|
-| `feature-table.biom` | Feature table exported from QIIME2 |
-| `rep_seqs.fasta`    | Representative sequences exported from QIIME2 |
-| `pathway_gene_map.tsv` | Maps Pathway IDs to their associated Gene/KO IDs. |
+| `feature-table.biom` | Feature table exported from QIIME2. |
+| `rep_seqs.fasta`    | Representative sequences exported from QIIME2. |
+| `pathway_gene_map.tsv` | Maps pathway IDs to their associated gene/KO IDs. **First column:** pathway ID; **other columns:** gene IDs. |
 
 <p align="center">
   <img src="figures/PICRUSt2_overview.png" width="700"/>
@@ -176,9 +176,9 @@ pathway_pipeline.py \
 
 | File                      | Description                            |
 |---------------------------|--------------------------------------|
-| `pred_metagenome_unstrat.tsv` | Predicted gene (KO) abundance        |
-| `path_abun_unstrat.tsv`   | Predicted pathway abundance |
-| `path_abun_contrib.tsv`   | Predicted pathway contribution |
+| `pred_metagenome_unstrat.tsv` | Predicted gene (KO) abundance. |
+| `path_abun_unstrat.tsv`   | Predicted pathway abundance. |
+| `path_abun_contrib.tsv`   | Predicted pathway contribution. |
 
 ## Module 2: Network construction
 
@@ -364,7 +364,7 @@ The pathway–pathway network is constructed using pathways identified as signif
 |---|---|
 | `pred_metagenome_unstrat.csv` | Gene abundance data from PICRUSt2. |
 | `sample_metadata.csv` | Sample metadata with group or condition information. **Required columns**: `SampleID`, `class`. |
-| `pathway_gene_map.csv` | Mapping file from pathways to genes. **First column:** pathway ID; **other columns:** gene IDs. |
+| `pathway_gene_map.csv` | Maps pathway IDs to their associated gene/KO IDs. **First column:** pathway ID; **other columns:** gene IDs. |
 
 ```r
 library(DESeq2)
