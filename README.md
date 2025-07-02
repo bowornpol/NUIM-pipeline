@@ -6,7 +6,7 @@ We developed NUIM, a modular, network-based framework for integrating microbiome
   <img src="figures/NUIM_overview.png" width="500"/>
 </p>
 
-### Module 1: Data Preparation and Processing
+### Module 1: Data preparation and processing
 
 This module defines the procedures required to prepare and process the input data for downstream network construction and analysis.
 
@@ -14,7 +14,7 @@ This module defines the procedures required to prepare and process the input dat
 - Microbiome data processing involves the use of QIIME2 to generate a feature table and representative sequences. These outputs are subsequently processed using PICRUSt2 for functional prediction, yielding gene abundance, pathway abundance, and pathway contribution data.  
 - Although metabolome data processing may vary depending on user preference and experimental design, NUIM assumes that metabolite concentrations have been appropriately processed by standard practice. For example, users may employ established platforms such as Metabox or MetaboAnalyst to perform normalization, transformation, and quality control of metabolomics data.
 
-### QIIME2 Command Line Example
+### QIIME2 command line example
 
 This section provides a general QIIME2 workflow for processing paired-end 16S rRNA sequencing data. The goal is to generate a feature table and representative sequences for PICRUSt2.
 
@@ -99,20 +99,18 @@ qiime tools export \
   --output-path dna-sequences
 ```
 
-### PICRUSt2 Command Line Example
+### PICRUSt2 command line example
 
 PICRUSt2 predicts functional profiles from 16S rRNA data. This step uses representative sequences and a feature table from QIIME2.
 
 #### **Required Inputs**
 
 - `dna-sequences.fasta`: Representative sequences exported from QIIME2 (`rep_seqs.qza`)
-- `feature-table.biom`: Feature table exported from QIIME2 (`normalized_table.qza`, converted to BIOM format)
+- `feature-table.biom`: Feature table exported from QIIME2 (`normalized_table.qza`)
 
 <p align="center">
   <img src="figures/PICRUSt2_overview.png" width="700"/>
 </p>
-
-### PICRUSt2 Command Line Example
 
 ```bash
 # Activate PICRUSt2 environment
