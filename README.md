@@ -14,7 +14,7 @@ This module defines the procedures required to prepare and process the input dat
 - Microbiome data processing involves the use of QIIME2 to generate a feature table and representative sequences. These outputs are subsequently processed using PICRUSt2 for functional prediction, yielding gene abundance, pathway abundance, and pathway contribution data.  
 - Although metabolome data processing may vary depending on user preference and experimental design, NUIM assumes that metabolite concentrations have been appropriately processed by standard practice. For example, users may employ established platforms such as Metabox or MetaboAnalyst to perform normalization, transformation, and quality control of metabolomics data.
 
-## QIIME2 workflow
+### QIIME2 workflow
 
 This section provides a general QIIME2 workflow for processing paired-end 16S rRNA sequencing data. The goal is to generate a feature table and representative sequences for PICRUSt2.
 
@@ -109,7 +109,7 @@ qiime tools export \
 - `feature-table.biom`: Feature (ASV) count table.  
 - `rep_seqs.fasta`: Representative sequences for each ASV.  
 
-## PICRUSt2 workflow
+### PICRUSt2 workflow
 
 PICRUSt2 predicts functional profiles from 16S rRNA data. This step uses representative sequences and a feature table from QIIME2.
 
