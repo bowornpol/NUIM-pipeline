@@ -1,9 +1,6 @@
 ## NUIM: Network-based utility for integrating microbiome and metabolome data
 
-We developed NUIM, a modular, network-based framework for integrating microbiome and metabolome data systematically. NUIM consists of three modules:  
-(1) data preparation and processing
-(2) network construction
-(3) network analysis 
+We developed NUIM, a modular, network-based framework for integrating microbiome and metabolome data systematically. NUIM consists of three modules: (1) data preparation and processing, (2) network construction, and (3) network analysis.
 
 ### Module 1: Data Preparation and Processing
 
