@@ -299,17 +299,15 @@ Each row represents a weighted edge linking a microbial taxon (`TaxonID`) to a f
 
 ### <ins>Step 2: Pathway–pathway network construction</ins>
 
-The pathway–pathway network is constructed using pathways identified as significant through Gene Set Enrichment Analysis (GSEA). Edges between pathways represent similarity based on shared genes, quantified by the Jaccard index.
+The pathway–pathway network is constructed using pathways identified as significant through Gene Set Enrichment Analysis (GSEA). Edges between pathways are defined based on shared genes, and Jaccard indices represent edge weights.
 
 #### **Required inputs**
 
 | File | Description |
 |---|---|
-| `pred_metagenome_unstrat.csv` | Predicted metagenome abundance table (pathway or gene abundance). Rows are genes/pathways, columns are samples. |
+| `pred_metagenome_unstrat.csv` | Gene abundance data from PICRUSt2. |
 | `sample_metadata.csv` | Sample metadata with group or condition information. **Required columns**: `SampleID`, `class`. |
 | `pathway_gene_map.csv` | Mapping file from pathways to genes. **First column: pathway ID; other columns: gene IDs.** |
-
-> This function supports any gene-to-pathway mapping file in the above format, not limited to KEGG.
 
 ```r
 library(DESeq2)
