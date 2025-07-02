@@ -109,7 +109,7 @@ PICRUSt2 predicts functional profiles from 16S rRNA data. This step uses represe
 - `feature-table.biom`: Feature table exported from QIIME2 (`normalized_table.qza`, converted to BIOM format)
 
 <p align="center">
-  <img src="figures/PICRUSt2_overview.png" width="500"/>
+  <img src="figures/PICRUSt2_overview.png" width="700"/>
 </p>
 
 ### PICRUSt2 Command Line Example
