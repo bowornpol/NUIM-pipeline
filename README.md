@@ -23,7 +23,7 @@ This section provides a general QIIME2 workflow for processing paired-end 16S rR
 | File            | Description                         |
 |-----------------|-----------------------------------|
 | `FASTQ`         | Raw paired-end sequencing reads   |
-| `manifest.csv`  | Mapping of sample IDs to FASTQ files |  
+| `manifest.tsv`  | Mapping of sample IDs to FASTQ files |  
 
 <p align="center">
   <img src="figures/QIIME2_overview.png" width="500"/>
@@ -112,9 +112,11 @@ qiime tools export \
 
 #### **QIIME2 Outputs**
 
-- `feature-table.biom`: Feature (ASV) count table.  
-- `rep_seqs.fasta`: Representative sequences for each ASV.
-- `taxonomy.tsv`: Taxonomic assignment of each ASV  
+| File                | Description                      |
+|---------------------|---------------------------------|
+| `feature-table.biom` | Feature (ASV) count table        |
+| `rep_seqs.fasta`    | Representative sequences         |
+| `taxonomy.tsv`      | Taxonomic assignment of ASVs | 
 
 ### <ins>PICRUSt2 workflow</ins>
 
@@ -122,8 +124,10 @@ PICRUSt2 predicts functional profiles from 16S rRNA data. This step uses a featu
 
 #### **Required Inputs**
 
-- `feature-table.biom`: Feature table exported from QIIME2 (`normalized_table.qza`)
-- `rep_seqs.fasta`: Representative sequences exported from QIIME2 (`rep_seqs.qza`)
+| File                | Description                     |
+|---------------------|---------------------------------|
+| `feature-table.biom` | Feature table exported from QIIME2 (`normalized_table.qza`) |
+| `rep_seqs.fasta`    | Representative sequences exported from QIIME2 (`rep_seqs.qza`) |
 
 <p align="center">
   <img src="figures/PICRUSt2_overview.png" width="700"/>
@@ -169,9 +173,11 @@ pathway_pipeline.py \
 
 #### **PICRUSt2 Outputs**
 
-- `pred_metagenome_unstrat.tsv`: Predicted gene abundance. 
-- `path_abun_unstrat.tsv`: Predicted pathway abundance.  
-- `path_abun_contrib.tsv`: Predicted pathway contribution.
+| File                      | Description                            |
+|---------------------------|--------------------------------------|
+| `pred_metagenome_unstrat.tsv` | Predicted gene (KO) abundance        |
+| `path_abun_unstrat.tsv`   | Predicted pathway abundance |
+| `path_abun_contrib.tsv`   | Predicted pathway contribution |
 
 ## Module 2: Network Construction
 
