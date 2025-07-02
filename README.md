@@ -200,133 +200,188 @@ The microbe–pathway network is constructed from pathway contribution data, wit
 library(dplyr)
 
 construct_microbe_pathway_network <- function(
-    contrib_file,
-    metadata_file,
-    taxonomy_file,
-    output_file,
-    filtering = c("unfiltered", "mean", "median", "top10%", "top25%", "top50%", "top75%")
+  contrib_file,
+  metadata_file,
+  taxonomy_file,
+  output_file, # Now directly the output directory path
+  filtering = c("unfiltered", "mean", "median", "top10%", "top25%", "top50%", "top75%")
 ) {
-    filtering <- match.arg(filtering)
-    message("Starting microbe-pathway network construction with filtering: ", filtering)
-
-    # Load data with robust error handling
-    contrib <- tryCatch(read.csv(contrib_file, stringsAsFactors = FALSE), error = function(e) {
-        stop(paste("Error loading contribution file '", contrib_file, "': ", e$message, sep = ""))
-    })
-    metadata <- tryCatch(read.csv(metadata_file, stringsAsFactors = FALSE), error = function(e) {
-        stop(paste("Error loading metadata file '", metadata_file, "': ", e$message, sep = ""))
-    })
-    taxonomy <- tryCatch(read.csv(taxonomy_file, stringsAsFactors = FALSE), error = function(e) {
-        stop(paste("Error loading taxonomy file '", taxonomy_file, "': ", e$message, sep = ""))
-    })
-
-    # Ensure 'class' column exists in metadata
-    if (!"class" %in% colnames(metadata)) {
-        metadata$class <- "all"
-    } else {
-        metadata$class <- as.character(metadata$class)
+  filtering <- match.arg(filtering)
+  message("Starting microbe-pathway network construction with filtering: ", filtering)
+  
+  # --- Create output directory if it doesn't exist ---
+  # Now 'output_file' is treated directly as the directory path
+  if (!dir.exists(output_file)) {
+    dir.create(output_file, recursive = TRUE)
+    message("Created output directory: ", output_file)
+  } else {
+    message("Output directory already exists: ", output_file)
+  }
+  # ----------------------------------------------------
+  
+  # Load data with robust error handling
+  message("Loading data...")
+  contrib <- tryCatch(
+    read.csv(contrib_file, stringsAsFactors = FALSE),
+    error = function(e) {
+      stop(paste("Error loading contribution file '", contrib_file, "': ", e$message, sep = ""))
     }
-
-    # Ensure ID columns are consistent types (character) for merging
-    if ("SampleID" %in% colnames(contrib)) contrib$SampleID <- as.character(contrib$SampleID)
-    if ("SampleID" %in% colnames(metadata)) metadata$SampleID <- as.character(metadata$SampleID)
-    if ("FeatureID" %in% colnames(contrib)) contrib$FeatureID <- as.character(contrib$FeatureID)
-    if ("FeatureID" %in% colnames(taxonomy)) taxonomy$FeatureID <- as.character(taxonomy$FeatureID)
-    if ("FunctionID" %in% colnames(contrib)) contrib$FunctionID <- as.character(contrib$FunctionID)
-    if ("TaxonID" %in% colnames(taxonomy)) taxonomy$TaxonID <- as.character(taxonomy$TaxonID)
-
-    # Merge contribution and metadata
-    merged <- merge(contrib, metadata, by = "SampleID", all.x = TRUE)
-    if (nrow(merged) == 0) {
-        stop("Merging contribution and metadata resulted in an empty data frame. Check 'SampleID' column consistency and data in both files.")
+  )
+  metadata <- tryCatch(
+    read.csv(metadata_file, stringsAsFactors = FALSE),
+    error = function(e) {
+      stop(paste("Error loading metadata file '", metadata_file, "': ", e$message, sep = ""))
     }
-
-    # Select only necessary columns from taxonomy (FeatureID, TaxonID) to avoid conflicts
-    cols_to_keep_from_taxonomy <- c("FeatureID", "TaxonID")
-    if (!all(cols_to_keep_from_taxonomy %in% colnames(taxonomy))) {
-        missing_tax_cols <- setdiff(cols_to_keep_from_taxonomy, colnames(taxonomy))
-        stop(paste("Error: Missing expected columns in taxonomy file for selection: ", paste(missing_tax_cols, collapse = ", ")))
+  )
+  taxonomy <- tryCatch(
+    read.csv(taxonomy_file, stringsAsFactors = FALSE),
+    error = function(e) {
+      stop(paste("Error loading taxonomy file '", taxonomy_file, "': ", e$message, sep = ""))
     }
-    taxonomy_for_merge <- taxonomy %>% select(all_of(cols_to_keep_from_taxonomy))
-
-    # Merge taxonomy information
-    merged <- merge(merged, taxonomy_for_merge, by = "FeatureID", all.x = TRUE)
-    if (nrow(merged) == 0) {
-        stop("Merging taxonomy resulted in an empty data frame. Check 'FeatureID' column consistency in merged data and taxonomy file.")
-    }
-    if (!"taxon_function_abun" %in% colnames(merged)) {
-        stop("Column 'taxon_function_abun' not found after merging. Please check your 'contrib_file' for this column.")
-    }
-    merged$taxon_function_abun <- as.numeric(merged$taxon_function_abun)
-
-    # Clean unique classes (remove NAs)
-    unique_classes_clean <- unique(merged$class)
-    unique_classes_clean <- unique_classes_clean[!is.na(unique_classes_clean)]
-
-    if (length(unique_classes_clean) == 0) {
-        warning("No valid (non-NA) unique classes found in merged data. Output files will not be generated. Please check your 'metadata.csv' 'class' column and 'SampleID' matching.")
-        return(invisible(NULL))
-    }
-
-    # Set output subdirectory
-    results_dir <- file.path(output_file, "microbe_pathway_network_results")
-    if (!dir.exists(results_dir)) {
-        dir.create(results_dir, recursive = TRUE)
-    }
-
-    # Loop over each valid class
-    for (current_class in unique_classes_clean) {
-        merged_class <- merged %>% filter(class == current_class)
-        if (nrow(merged_class) == 0) { next }
-
-        # Aggregate taxon-function abundance
-        if (!all(c("FunctionID", "TaxonID", "taxon_function_abun") %in% colnames(merged_class))) { next }
-        taxon_function_total_class <- aggregate(
-            taxon_function_abun ~ FunctionID + TaxonID,
-            data = merged_class, sum, na.rm = TRUE
-        )
-        if (nrow(taxon_function_total_class) == 0) { next }
-
-        # Calculate total abundance per function and relative contribution
-        function_total_class <- aggregate(
-            taxon_function_abun ~ FunctionID,
-            data = taxon_function_total_class, sum, na.rm = TRUE
-        )
-        colnames(function_total_class)[2] <- "total_abundance_all_taxa"
-        taxon_function_total_class <- merge(taxon_function_total_class, function_total_class, by = "FunctionID")
-        taxon_function_total_class$relative_contribution <- with(taxon_function_total_class,
-            ifelse(total_abundance_all_taxa == 0, 0, taxon_function_abun / total_abundance_all_taxa)
-        )
-
-        # Apply filtering
-        if (filtering != "unfiltered") {
-            if (filtering %in% c("mean", "median")) {
-                threshold_df <- aggregate(relative_contribution ~ FunctionID, data = taxon_function_total_class,
-                                          FUN = ifelse(filtering == "mean", mean, median), na.rm = TRUE)
-                colnames(threshold_df)[2] <- "threshold"
-                taxon_function_total_class <- merge(taxon_function_total_class, threshold_df, by = "FunctionID")
-                taxon_function_total_class <- subset(taxon_function_total_class, relative_contribution >= threshold | is.na(threshold))
-            } else {
-                percent_map <- c("top10%" = 0.10, "top25%" = 0.25, "top50%" = 0.50, "top75%" = 0.75)
-                top_percent <- percent_map[filtering]
-                taxon_function_total_class <- taxon_function_total_class %>%
-                    group_by(FunctionID) %>% arrange(desc(relative_contribution)) %>%
-                    mutate(rank = row_number(), n_taxa = n(), cutoff = pmax(ceiling(top_percent * n_taxa), 1)) %>%
-                    filter(rank <= cutoff) %>% ungroup() %>% select(-rank, -n_taxa, -cutoff)
-            }
-            if (nrow(taxon_function_total_class) == 0) { next }
-        }
-
-        # Sort and write output
-        taxon_function_total_class <- taxon_function_total_class[order(taxon_function_total_class$FunctionID, -taxon_function_total_class$relative_contribution), ]
-        file_suffix <- gsub("%", "", filtering)
-        output_file_name <- paste0("microbe_pathway_network_", current_class, "_", file_suffix, ".csv")
-        full_output_path <- file.path(results_dir, output_file_name)
-        write.csv(taxon_function_total_class, full_output_path, row.names = FALSE)
-        message("  Saved results for class '", current_class, "' to: ", full_output_path)
-    }
-    message("Processing complete.")
+  )
+  
+  # --- Debugging: Check initial data frames dimensions and column names ---
+  message("Dim contrib: ", paste(dim(contrib), collapse = "x"), " | Cols: ", paste(colnames(contrib), collapse = ", "))
+  message("Dim metadata: ", paste(dim(metadata), collapse = "x"), " | Cols: ", paste(colnames(metadata), collapse = ", "))
+  message("Dim taxonomy: ", paste(dim(taxonomy), collapse = "x"), " | Cols: ", paste(colnames(taxonomy), collapse = ", "))
+  # -----------------------------------------------------------------------
+  
+  # Ensure 'class' column exists in metadata
+  if (!"class" %in% colnames(metadata)) {
+    message("'class' column not found in metadata. Creating a default 'all' class.")
+    metadata$class <- "all"
+  } else {
+    message("'class' column found in metadata.")
+    metadata$class <- as.character(metadata$class)
+  }
+  
+  # Ensure ID columns are consistent types (character) for merging
+  if ("SampleID" %in% colnames(contrib)) contrib$SampleID <- as.character(contrib$SampleID)
+  if ("SampleID" %in% colnames(metadata)) metadata$SampleID <- as.character(metadata$SampleID)
+  if ("FeatureID" %in% colnames(contrib)) contrib$FeatureID <- as.character(contrib$FeatureID)
+  if ("FeatureID" %in% colnames(taxonomy)) taxonomy$FeatureID <- as.character(taxonomy$FeatureID)
+  if ("FunctionID" %in% colnames(contrib)) contrib$FunctionID <- as.character(contrib$FunctionID)
+  if ("TaxonID" %in% colnames(taxonomy)) taxonomy$TaxonID <- as.character(taxonomy$TaxonID)
+  
+  # Merge contribution and metadata
+  message("Merging contribution and metadata...")
+  merged <- merge(contrib, metadata, by = "SampleID", all.x = TRUE)
+  message("  Dim after merging contrib and metadata: ", paste(dim(merged), collapse = "x"))
+  if (nrow(merged) == 0) {
+    stop("Merging contribution and metadata resulted in an empty data frame. Check 'SampleID' column consistency and data in both files.")
+  }
+  
+  # Select only necessary columns from taxonomy (FeatureID, TaxonID) to avoid conflicts
+  cols_to_keep_from_taxonomy <- c("FeatureID", "TaxonID")
+  message("Pre-merge check with taxonomy:")
+  message("  Columns in 'merged' before taxonomy merge: ", paste(colnames(merged), collapse = ", "))
+  message("  Columns in 'taxonomy' before merge: ", paste(colnames(taxonomy), collapse = ", "))
+  if (!all(cols_to_keep_from_taxonomy %in% colnames(taxonomy))) {
+    missing_tax_cols <- setdiff(cols_to_keep_from_taxonomy, colnames(taxonomy))
+    stop(paste("Error: Missing expected columns in taxonomy file for selection: ", paste(missing_tax_cols, collapse = ", ")))
+  }
+  taxonomy_for_merge <- taxonomy %>% select(all_of(cols_to_keep_from_taxonomy))
+  message("  Columns selected from 'taxonomy' for merge: ", paste(colnames(taxonomy_for_merge), collapse = ", "))
+  
+  # Merge taxonomy information
+  message("Merging with taxonomy data...")
+  merged <- merge(merged, taxonomy_for_merge, by = "FeatureID", all.x = TRUE)
+  message("  Dim after merging taxonomy: ", paste(dim(merged), collapse = "x"))
+  if (nrow(merged) == 0) {
+    stop("Merging taxonomy resulted in an empty data frame. Check 'FeatureID' column consistency in merged data and taxonomy file.")
+  }
+  if (!"taxon_function_abun" %in% colnames(merged)) {
+    stop("Column 'taxon_function_abun' not found after merging. Please check your 'contrib_file' for this column.")
+  }
+  merged$taxon_function_abun <- as.numeric(merged$taxon_function_abun)
+  
+  # Clean unique classes (remove NAs)
+  unique_classes_clean <- unique(merged$class)
+  unique_classes_clean <- unique_classes_clean[!is.na(unique_classes_clean)]
+  
+  message("Unique classes identified for processing: ",
+          if (length(unique_classes_clean) > 0) paste(sort(unique_classes_clean), collapse = ", ") else "None (or all are NA)")
+  
+  if (length(unique_classes_clean) == 0) {
+    warning("No valid (non-NA) unique classes found in merged data. Output files will not be generated. Please check your 'metadata.csv' 'class' column and 'SampleID' matching.")
     return(invisible(NULL))
+  }
+  
+  # Loop over each valid class
+  for (current_class in unique_classes_clean) {
+    message("\nProcessing class: '", current_class, "'")
+    
+    merged_class <- merged %>% filter(class == current_class)
+    message("  Dim merged_class for '", current_class, "': ", paste(dim(merged_class), collapse = "x"))
+    if (nrow(merged_class) == 0) {
+      message("  No data for class '", current_class, "'. Skipping this class.")
+      next
+    }
+    
+    # Aggregate taxon-function abundance
+    message("  Aggregating taxon-function abundance for '", current_class, "'...")
+    if (!all(c("FunctionID", "TaxonID", "taxon_function_abun") %in% colnames(merged_class))) {
+      warning("  Missing 'FunctionID', 'TaxonID', or 'taxon_function_abun' for class '", current_class, "'. Skipping aggregation.")
+      next
+    }
+    taxon_function_total_class <- aggregate(
+      taxon_function_abun ~ FunctionID + TaxonID,
+      data = merged_class, sum, na.rm = TRUE
+    )
+    message("  Dim aggregated taxon-function data: ", paste(dim(taxon_function_total_class), collapse = "x"))
+    if (nrow(taxon_function_total_class) == 0) {
+      message("  No aggregated data (taxon-function abundance) for class '", current_class, "'. Skipping this class.")
+      next
+    }
+    
+    # Calculate total abundance per function and relative contribution
+    message("  Calculating relative contributions for '", current_class, "'...")
+    function_total_class <- aggregate(
+      taxon_function_abun ~ FunctionID,
+      data = taxon_function_total_class, sum, na.rm = TRUE
+    )
+    colnames(function_total_class)[2] <- "total_abundance_all_taxa"
+    taxon_function_total_class <- merge(taxon_function_total_class, function_total_class, by = "FunctionID")
+    taxon_function_total_class$relative_contribution <- with(taxon_function_total_class,
+                                                             ifelse(total_abundance_all_taxa == 0, 0, taxon_function_abun / total_abundance_all_taxa)
+    )
+    message("  Dim after relative contribution calculation: ", paste(dim(taxon_function_total_class), collapse = "x"))
+    
+    # Apply filtering
+    if (filtering != "unfiltered") {
+      message("  Applying filtering: ", filtering, " for class '", current_class, "'...")
+      if (filtering %in% c("mean", "median")) {
+        threshold_df <- aggregate(relative_contribution ~ FunctionID, data = taxon_function_total_class,
+                                  FUN = ifelse(filtering == "mean", mean, median), na.rm = TRUE)
+        colnames(threshold_df)[2] <- "threshold"
+        taxon_function_total_class <- merge(taxon_function_total_class, threshold_df, by = "FunctionID")
+        taxon_function_total_class <- subset(taxon_function_total_class, relative_contribution >= threshold | is.na(threshold))
+      } else {
+        percent_map <- c("top10%" = 0.10, "top25%" = 0.25, "top50%" = 0.50, "top75%" = 0.75)
+        top_percent <- percent_map[filtering]
+        taxon_function_total_class <- taxon_function_total_class %>%
+          group_by(FunctionID) %>% arrange(desc(relative_contribution)) %>%
+          mutate(rank = row_number(), n_taxa = n(), cutoff = pmax(ceiling(top_percent * n_taxa), 1)) %>%
+          filter(rank <= cutoff) %>% ungroup() %>% select(-rank, -n_taxa, -cutoff)
+      }
+      message("  Dim after filtering: ", paste(dim(taxon_function_total_class), collapse = "x"))
+      if (nrow(taxon_function_total_class) == 0) {
+        message("  No data remaining after filtering (", filtering, ") for class '", current_class, "'. Skipping output for this class.")
+        next
+      }
+    }
+    
+    # Sort and write output
+    message("  Saving results for class '", current_class, "'...")
+    taxon_function_total_class <- taxon_function_total_class[order(taxon_function_total_class$FunctionID, -taxon_function_total_class$relative_contribution), ]
+    file_suffix <- gsub("%", "", filtering)
+    # Construct full_output_path directly using the provided output_file as the directory
+    full_output_path <- file.path(output_file, paste0("microbe_pathway_network_", current_class, "_", file_suffix, ".csv"))
+    write.csv(taxon_function_total_class, full_output_path, row.names = FALSE)
+    message("  Saved results for class '", current_class, "' to: ", full_output_path)
+  }
+  message("Processing complete.")
+  return(invisible(NULL))
 }
 
 # Example usage:
@@ -625,7 +680,7 @@ construct_pathway_pathway_network(
    abundance_file = "pred_metagenome_unstrat.csv", 
    metadata_file = "sample_metadata.csv",          
    map_file = "pathway_gene_map.csv",              
-   output_file = "pathway_pathway_network_results", # Path to the output directory that will contain results for each comparison        
+   output_file = "pathway_pathway_network_results", # Output directory for results       
    pvalueCutoff = 0.05, # User MUST specify this value, e.g., 0.05
    pAdjustMethod = "BH" # User can choose from "holm", "hochberg", "hommel", "bonferroni", "BH", "BY", "fdr", "none"
 )
@@ -654,7 +709,6 @@ Each row represents a connection between two pathways (`pathway_1`, `pathway_2`)
 ### <ins>Pathway–metabolite network construction</ins>
 
 The pathway–metabolite network is constructed by calculating pairwise correlation (e.g., Spearman or Pearson) between pathway abundance and metabolite concentrations.  
-
 
 ### <ins>Multi-layered network</ins>
 
