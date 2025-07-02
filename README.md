@@ -162,9 +162,9 @@ pathway_pipeline.py \
 
 #### **PICRUSt2 Outputs**
 
-- `KO_metagenome_out/pred_metagenome_unstrat.csv`: Predicted gene abundance. 
-- `pathways_abundance/path_abun_unstrat.csv`: Predicted pathway abundance.  
-- `pathways_contrib/path_abun_contrib.csv`: Predicted pathway contribution.
+- `pred_metagenome_unstrat.tsv`: Predicted gene abundance. 
+- `path_abun_unstrat.tsv`: Predicted pathway abundance.  
+- `path_abun_contrib.tsv`: Predicted pathway contribution.
 
 ## Module 2: Network Construction
 
