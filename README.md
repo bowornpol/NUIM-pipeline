@@ -18,7 +18,9 @@ This module defines the procedures required to prepare and process the input dat
 
 This section provides a general QIIME2 workflow for processing paired-end 16S rRNA sequencing data. The goal is to generate a feature table and representative sequences for PICRUSt2.
 
-![Overview of the QIIME2 workflow](figures/QIIME2_overview.png)
+<p align="center">
+  <img src="figures/QIIME2_overview.png" width="500"/>
+</p>
 
 ```bash
 # Activate QIIME2 environment
@@ -107,7 +109,7 @@ PICRUSt2 predicts functional profiles from 16S rRNA data. This step uses represe
 - `feature-table.biom`: Feature table exported from QIIME2 (`normalized_table.qza`, converted to BIOM format)
 
 <p align="center">
-  <img src="figures/QIIME2_overview.png" width="500"/>
+  <img src="figures/PICRUSt2_overview.png" width="500"/>
 </p>
 
 ### PICRUSt2 Command Line Example
