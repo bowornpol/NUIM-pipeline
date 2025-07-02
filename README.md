@@ -16,6 +16,8 @@ This module defines the procedures required to prepare and process the input dat
 
 This section provides a general QIIME2 workflow for processing paired-end 16S rRNA sequencing data. The goal is to generate a feature table and representative sequences for PICRUSt2.
 
+![Overview of the QIIME2 workflow](figures/QIIME2_overview.png)
+
 ```bash
 # Activate QIIME2 environment
 conda activate qiime2
@@ -71,7 +73,7 @@ qiime feature-table filter-features \
 qiime feature-table rarefy \
   --i-table filtered_table.qza \
   --p-sampling-depth <depth_to_rarefy> \
-  --o-rarefied-table rarefied_table.qza
+  --o-rarefied-table normalized_table.qza
 
 # STEP 7: Taxonomic classification
 # Use a pre-trained classifier appropriate for your 16S region (e.g., SILVA, Greengenes).
@@ -85,7 +87,7 @@ qiime feature-classifier classify-sklearn \
 # Export the final feature table and representative sequences for functional prediction.
 
 qiime tools export \
-  --input-path rarefied_table.qza \
+  --input-path normalized_table.qza \
   --output-path feature-table
 
 qiime tools export \
@@ -101,6 +103,8 @@ PICRUSt2 predicts functional profiles from 16S rRNA data. This step uses represe
 
 - `dna-sequences.fasta`: Representative sequences exported from QIIME2 (`rep_seqs.qza`)
 - `feature-table.biom`: Feature table exported from QIIME2 (`normalized_table.qza`, converted to BIOM format)
+
+![Overview of the PICRUSt2 workflow](figures/PICRUSt2_overview.png)
 
 ### PICRUSt2 Command Line Example
 
