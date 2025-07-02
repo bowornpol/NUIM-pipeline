@@ -181,16 +181,126 @@ pathway_pipeline.py \
 
 ## Module 2: Network Construction
 
-This module constructs a tripartite network linking microbial taxa, metabolic pathways, and metabolites. The network is composed of the following components:
-
-- The microbe–pathway network is constructed from pathway contribution data, with edges representing the relative contribution of each microbe to specific pathways.  
-- The pathway–pathway network is constructed using pathways identified as significant through Gene Set Enrichment Analysis (GSEA). Edges between pathways are defined based on shared genes, and Jaccard indices represent edge weights.  
-- The pathway–metabolite network is constructed by calculating pairwise correlation (e.g., Spearman or Pearson) between pathway abundance and metabolite concentrations.  
-- These networks are finally integrated through connected pathway nodes to construct a multi-layered network.
+This module constructs a tripartite network linking microbial taxa, metabolic pathways, and metabolites. Below, we provide R functions for constructing each network layer.
 
 ### <ins>Microbe–pathway network construction</ins>
+
+The microbe–pathway network is constructed from pathway contribution data, with edges representing the relative contribution of each microbe to specific pathways.
+
+#### **Required Inputs**
+
+| File                | Description                     |
+|---------------------|---------------------------------|
+
+
+```r
+### Module 2: Microbe–Pathway Network Construction
+
+The microbe–pathway network is constructed from pathway contribution data, with edges representing the relative contribution of each microbe to specific pathways.
+
+```r
+library(dplyr)
+
+construct_microbe_pathway_network <- function(
+  contrib_file,
+  metadata_file,
+  taxonomy_file,
+  output_file = "microbe_pathway_network.csv",
+  filtering = c("unfiltered", "mean", "median", "top10%", "top25%", "top50%", "top75%")
+) {
+  # Match filtering argument to allowed options
+  filtering <- match.arg(filtering)
+
+  # Read input CSV files
+  contrib <- read.csv(contrib_file)        # Columns: SampleID, FeatureID, FunctionID, taxon_function_abun, etc.
+  metadata <- read.csv(metadata_file)      # Columns: SampleID, group info (optional)
+  taxonomy <- read.csv(taxonomy_file)      # Columns: FeatureID, TaxonID, taxonomy details
+
+  # Merge contribution data with metadata by SampleID
+  merged <- merge(contrib, metadata, by = "SampleID")
+  # Merge the above result with taxonomy data by FeatureID (microbial feature identifier)
+  merged <- merge(merged, taxonomy, by = "FeatureID", all.x = TRUE)
+
+  # Summarize total abundance of each function contributed by each taxon
+  taxon_function_total <- aggregate(
+    taxon_function_abun ~ FunctionID + TaxonID,
+    data = merged,
+    FUN = sum,
+    na.rm = TRUE
+  )
+
+  # Calculate total abundance of each function across all taxa (denominator for relative contribution)
+  function_total <- aggregate(
+    taxon_function_abun ~ FunctionID,
+    data = taxon_function_total,
+    FUN = sum,
+    na.rm = TRUE
+  )
+  colnames(function_total)[2] <- "total_abundance_all_taxa"
+
+  # Merge total abundance with taxon-function abundance to compute relative contribution
+  taxon_function_total <- merge(taxon_function_total, function_total, by = "FunctionID")
+  taxon_function_total$relative_contribution <- taxon_function_total$taxon_function_abun / taxon_function_total$total_abundance_all_taxa
+
+  # Filter data based on user-selected threshold method
+  if (filtering != "unfiltered") {
+    if (filtering %in% c("mean", "median")) {
+      # Calculate mean or median relative contribution per function
+      threshold_df <- aggregate(
+        relative_contribution ~ FunctionID,
+        data = taxon_function_total,
+        FUN = ifelse(filtering == "mean", mean, median),
+        na.rm = TRUE
+      )
+      colnames(threshold_df)[2] <- "threshold"
+      # Filter to keep only taxa with relative contribution >= threshold
+      taxon_function_total <- merge(taxon_function_total, threshold_df, by = "FunctionID")
+      taxon_function_total <- subset(taxon_function_total, relative_contribution >= threshold | is.na(threshold))
+    } else if (grepl("^top", filtering)) {
+      # For topX% filters: keep taxa contributing cumulatively up to the specified top percentage
+      top_percent <- as.numeric(sub("top(\\d+)%", "\\1", filtering)) / 100
+      taxon_function_total <- do.call(rbind, lapply(split(taxon_function_total, taxon_function_total$FunctionID), function(df) {
+        # Sort by relative contribution descending
+        df <- df[order(-df$relative_contribution), ]
+        # Calculate cumulative sum
+        df$cum_sum <- cumsum(df$relative_contribution)
+        # Keep rows with cumulative sum less than or equal to top_percent
+        df[df$cum_sum <= top_percent, ]
+      }))
+    }
+  }
+
+  # Order final results by FunctionID and descending relative contribution
+  taxon_function_total <- taxon_function_total[order(taxon_function_total$FunctionID, -taxon_function_total$relative_contribution), ]
+
+  # Save filtered and ordered data to CSV
+  write.csv(taxon_function_total, output_file, row.names = FALSE)
+}
+
+# Example usage:
+construct_microbe_pathway_network(
+  contrib_file = "path_abun_contrib.csv",     # Pathway contribution data file
+  metadata_file = "sample_metadata.csv",      # Sample metadata (optional: group info)
+  taxonomy_file = "taxa_name.csv",         # Taxonomy info per microbial feature
+  output_file = "microbe_pathway_network.csv",# Output file path
+  filtering = "median"                                 # Filtering threshold: options are "unfiltered", "mean", "median", "top10%", "top25%", "top50%", "top75%"
+)
+```
+
+#### **Outputs**
+
+| File                | Description                     |
+|---------------------|---------------------------------|
+
 ### <ins>Pathway–pathway network construction</ins>
+
+The pathway–pathway network is constructed using pathways identified as significant through Gene Set Enrichment Analysis (GSEA). Edges between pathways are defined based on shared genes, and Jaccard indices represent edge weights.  
+
 ### <ins>Pathway–metabolite network construction</ins>
+
+The pathway–metabolite network is constructed by calculating pairwise correlation (e.g., Spearman or Pearson) between pathway abundance and metabolite concentrations.  
+
+
 ### <ins>Multi-layered network</ins>
 
 ## Module 3: Network Analysis
