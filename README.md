@@ -84,15 +84,7 @@ qiime feature-table rarefy \
   --p-sampling-depth <depth_to_rarefy> \
   --o-rarefied-table normalized_table.qza
 
-# STEP 7: Taxonomic classification
-# Use a pre-trained classifier appropriate for your 16S region (e.g., SILVA, Greengenes).
-
-qiime feature-classifier classify-sklearn \
-  --i-classifier <pretrained_classifier.qza> \
-  --i-reads filtered_rep_seqs.qza \
-  --o-classification taxonomy.qza
-
-# STEP 8: Export data for PICRUSt2
+# STEP 7: Export data for PICRUSt2
 # Export the final feature table and representative sequences for functional prediction.
 
 qiime tools export \
