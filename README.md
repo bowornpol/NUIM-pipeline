@@ -19,6 +19,7 @@ This section provides a general QIIME2 workflow for processing paired-end 16S rR
 ```bash
 # STEP 1: Import paired-end FASTQ files using a manifest file
 # The manifest CSV should map sample IDs to file paths of forward and reverse reads.
+
 qiime tools import \
   --type 'SampleData[PairedEndSequencesWithQuality]' \
   --input-path manifest.csv \
@@ -27,6 +28,7 @@ qiime tools import \
 
 # STEP 2: Trim primers/adapters
 # Replace the primer sequences below with the ones used in your sequencing protocol.
+
 qiime cutadapt trim-paired \
   --i-demultiplexed-sequences demux_reads.qza \
   --p-front-f <forward_primer_sequence> \
@@ -35,12 +37,14 @@ qiime cutadapt trim-paired \
 
 # STEP 3: Summarize read quality
 # Review this visualization to determine appropriate truncation lengths for the next step.
+
 qiime demux summarize \
   --i-data trimmed_reads.qza \
   --o-visualization quality_summary.qzv
 
 # STEP 4: Denoise reads using DADA2
 # Use the quality summary from Step 3 to choose truncation lengths and other parameters.
+
 qiime dada2 denoise-paired \
   --i-demultiplexed-seqs trimmed_reads.qza \
   --p-trunc-len-f <truncation_length_forward> \
@@ -51,6 +55,7 @@ qiime dada2 denoise-paired \
 
 # STEP 5: Filter low-abundance features
 # Adjust minimum sample count and read frequency as appropriate for your dataset.
+
 qiime feature-table filter-features \
   --i-table feature_table.qza \
   --p-min-samples <minimum_number_of_samples> \
@@ -59,28 +64,30 @@ qiime feature-table filter-features \
 
 # STEP 6: Rarefy the table to a uniform sequencing depth
 # Use rarefaction curves to help select the sampling depth.
+
 qiime feature-table rarefy \
   --i-table filtered_table.qza \
   --p-sampling-depth <depth_to_rarefy> \
   --o-rarefied-table rarefied_table.qza
 
-# STEP 7: Filter representative sequences to match rarefied table
-qiime feature-table filter-seqs \
-  --i-data rep_seqs.qza \
-  --i-table rarefied_table.qza \
-  --o-filtered-data filtered_rep_seqs.qza
-
-# STEP 8: Taxonomic classification
+# STEP 7: Taxonomic classification
 # Use a pre-trained classifier appropriate for your 16S region (e.g., SILVA, Greengenes).
+
 qiime feature-classifier classify-sklearn \
   --i-classifier <pretrained_classifier.qza> \
   --i-reads filtered_rep_seqs.qza \
   --o-classification taxonomy.qza
 
-# STEP 9 (Optional): Export data for downstream tools
-qiime tools export --input-path rarefied_table.qza --output-path exported_feature_table
-qiime tools export --input-path filtered_rep_seqs.qza --output-path exported_sequences
-qiime tools export --input-path taxonomy.qza --output-path exported_taxonomy
+# STEP 8: Export data for PICRUSt2
+# Export the final feature table and representative sequences for functional prediction.
+
+qiime tools export \
+  --input-path normalized_table.qza \
+  --output-path feature-table
+
+qiime tools export \
+  --input-path rep_seqs.qza \
+  --output-path dna-sequences
 ```
 
 ### Module 2: Network Construction
