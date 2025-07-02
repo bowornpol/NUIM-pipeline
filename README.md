@@ -8,7 +8,7 @@ We developed NUIM, a modular, network-based framework for integrating microbiome
 
 ## Module 1: Data preparation and processing
 
-This module defines the procedures required to prepare and process the input data for downstream network construction and analysis.
+This module defines the procedures required to prepare and process the input data for downstream network construction.
 
 - Input data includes `microbial sequencing reads in FASTQ format` and `metabolite concentration table`.  
 - Microbiome data processing involves the use of QIIME2 to generate a feature table and representative sequences. These outputs are subsequently processed using PICRUSt2 for functional prediction, yielding gene abundance, pathway abundance, and pathway contribution data.  
@@ -189,96 +189,138 @@ The microbe–pathway network is constructed from pathway contribution data, wit
 
 #### **Required inputs**
 
-| File                  | Description                                                                 |
-|-----------------------|-----------------------------------------------------------------------------|
+| File | Description |
+|---|---|
 | `path_abun_contrib.csv` | Pathway contribution data from PICRUSt2. **Required columns**: `SampleID`, `FeatureID`, `FunctionID`, `taxon_function_abun`. |
-| `sample_metadata.csv`   | Sample metadata. Used when there are multiple experimental groups. **Required column**: `SampleID`. |
-| `taxa_name.csv`         | Taxonomy annotations mapping `FeatureID` to taxonomic name (`TaxonID`). **Required columns**: `FeatureID`, `TaxonID`. |
-
-> `sample_metadata.csv` is optional if group-specific processing is not needed.  
-> `taxa_name.csv` is required to assign taxonomic labels to features.
+| `sample_metadata.csv` | Sample metadata. **Required for group-specific analysis**; must contain `SampleID` and `class` columns. If not provided or `class` column is missing, data will be processed as one 'overall' group. |
+| `taxa_name.csv` | Taxonomy annotations mapping `FeatureID` to taxonomic name (`TaxonID`). **Required columns**: `FeatureID`, `TaxonID`. |
 
 ```r
 library(dplyr)
 
 construct_microbe_pathway_network <- function(
   contrib_file,
-  metadata_file,
+  metadata_file = NULL, # Made optional
   taxonomy_file,
-  output_file,
+  output_file, # Now explicitly a directory path
   filtering = c("unfiltered", "mean", "median", "top10%", "top25%", "top50%", "top75%")
 ) {
   filtering <- match.arg(filtering)
 
-  contrib <- read.csv(contrib_file)
-  metadata <- read.csv(metadata_file)
-  taxonomy <- read.csv(taxonomy_file)
-
-  merged <- merge(contrib, metadata, by = "SampleID")
-  merged <- merge(merged, taxonomy, by = "FeatureID", all.x = TRUE)
-
-  taxon_function_total <- aggregate(
-    taxon_function_abun ~ FunctionID + TaxonID,
-    data = merged,
-    FUN = sum,
-    na.rm = TRUE
-  )
-
-  function_total <- aggregate(
-    taxon_function_abun ~ FunctionID,
-    data = taxon_function_total,
-    FUN = sum,
-    na.rm = TRUE
-  )
-  colnames(function_total)[2] <- "total_abundance_all_taxa"
-
-  taxon_function_total <- merge(taxon_function_total, function_total, by = "FunctionID")
-  taxon_function_total$relative_contribution <- taxon_function_total$taxon_function_abun / taxon_function_total$total_abundance_all_taxa
-
-  if (filtering != "unfiltered") {
-    if (filtering %in% c("mean", "median")) {
-      threshold_df <- aggregate(
-        relative_contribution ~ FunctionID,
-        data = taxon_function_total,
-        FUN = ifelse(filtering == "mean", mean, median),
-        na.rm = TRUE
-      )
-      colnames(threshold_df)[2] <- "threshold"
-      taxon_function_total <- merge(taxon_function_total, threshold_df, by = "FunctionID")
-      taxon_function_total <- subset(taxon_function_total, relative_contribution >= threshold | is.na(threshold))
-
-    } else if (filtering %in% c("top10%", "top25%", "top50%", "top75%")) {
-      # Create rank-based cutoff
-      percent_map <- c("top10%"=0.10, "top25%"=0.25, "top50%"=0.50, "top75%"=0.75)
-      top_percent <- percent_map[filtering]
-
-      # Arrange and filter by rank within each FunctionID
-      taxon_function_total <- taxon_function_total %>%
-        group_by(FunctionID) %>%
-        arrange(desc(relative_contribution)) %>%
-        mutate(
-          rank = row_number(),
-          n_taxa = n(),
-          cutoff = pmax(ceiling(top_percent * n_taxa), 1)
-        ) %>%
-        filter(rank <= cutoff) %>%
-        ungroup() %>%
-        select(-rank, -n_taxa, -cutoff)
-    }
+  # Create output directory if it doesn't exist
+  if (!dir.exists(output_file)) {
+    dir.create(output_file, recursive = TRUE)
   }
 
-  taxon_function_total <- taxon_function_total[order(taxon_function_total$FunctionID, -taxon_function_total$relative_contribution), ]
+  contrib <- read.csv(contrib_file)
+  taxonomy <- read.csv(taxonomy_file)
 
-  write.csv(taxon_function_total, output_file, row.names = FALSE)
+  # Initial merge with taxonomy data
+  merged_data <- merge(contrib, taxonomy, by = "FeatureID", all.x = TRUE)
+
+  # Determine if grouping is needed
+  process_by_group <- FALSE
+  groups <- "overall" # Default group name if no grouping
+
+  if (!is.null(metadata_file) && file.exists(metadata_file)) {
+    metadata <- read.csv(metadata_file)
+    
+    if (!"SampleID" %in% colnames(metadata)) {
+      stop("The 'sample_metadata.csv' file must contain a 'SampleID' column.")
+    }
+    
+    if ("class" %in% colnames(metadata)) {
+      # Merge with metadata if 'class' column exists for grouping
+      merged_data <- merge(merged_data, metadata, by = "SampleID")
+      groups <- unique(metadata$class)
+      process_by_group <- TRUE
+      message(paste("Processing data by group(s):", paste(groups, collapse = ", ")))
+    } else {
+      message("No 'class' column found in metadata. Processing overall data.")
+    }
+  } else {
+    message("No metadata file provided or file not found. Processing overall data.")
+  }
+
+  # Loop through each group or process overall data
+  for (current_group in groups) {
+    if (process_by_group) {
+      group_data <- merged_data %>% filter(class == current_group)
+      group_suffix <- paste0("_", current_group)
+    } else {
+      group_data <- merged_data
+      group_suffix <- "_overall"
+    }
+
+    # Calculate total abundance per taxon-function pair within the current group/overall
+    taxon_function_total <- aggregate(
+      taxon_function_abun ~ FunctionID + TaxonID,
+      data = group_data,
+      FUN = sum,
+      na.rm = TRUE
+    )
+
+    # Calculate total abundance per function across all taxa in the current group/overall
+    function_total <- aggregate(
+      taxon_function_abun ~ FunctionID,
+      data = taxon_function_total,
+      FUN = sum,
+      na.rm = TRUE
+    )
+    colnames(function_total)[2] <- "total_abundance_all_taxa"
+
+    # Merge to calculate relative contribution
+    taxon_function_total <- merge(taxon_function_total, function_total, by = "FunctionID")
+    taxon_function_total$relative_contribution <- taxon_function_total$taxon_function_abun / taxon_function_total$total_abundance_all_taxa
+
+    # Apply filtering based on user choice
+    if (filtering != "unfiltered") {
+      if (filtering %in% c("mean", "median")) {
+        threshold_df <- aggregate(
+          relative_contribution ~ FunctionID,
+          data = taxon_function_total,
+          FUN = ifelse(filtering == "mean", mean, median),
+          na.rm = TRUE
+        )
+        colnames(threshold_df)[2] <- "threshold"
+        taxon_function_total <- merge(taxon_function_total, threshold_df, by = "FunctionID")
+        taxon_function_total <- subset(taxon_function_total, relative_contribution >= threshold | is.na(threshold))
+
+      } else if (filtering %in% c("top10%", "top25%", "top50%", "top75%")) {
+        percent_map <- c("top10%"=0.10, "top25%"=0.25, "top50%"=0.50, "top75%"=0.75)
+        top_percent <- percent_map[filtering]
+
+        taxon_function_total <- taxon_function_total %>%
+          group_by(FunctionID) %>%
+          arrange(desc(relative_contribution)) %>%
+          mutate(
+            rank = row_number(),
+            n_taxa = n(),
+            cutoff = pmax(ceiling(top_percent * n_taxa), 1)
+          ) %>%
+          filter(rank <= cutoff) %>%
+          ungroup() %>%
+          select(-rank, -n_taxa, -cutoff)
+      }
+    }
+
+    # Order the results
+    taxon_function_total <- taxon_function_total[order(taxon_function_total$FunctionID, -taxon_function_total$relative_contribution), ]
+
+    # Construct output file path for the current group/overall
+    output_path <- file.path(output_file, paste0("microbe_pathway_network", group_suffix, ".csv"))
+    write.csv(taxon_function_total, output_path, row.names = FALSE)
+    message(paste("Output saved to:", output_path))
+  }
 }
 
 # Example usage:
 construct_microbe_pathway_network(
-  contrib_file = "path_abun_contrib.csv",     # Pathway contribution data file
-  metadata_file = "sample_metadata.csv",      # Sample metadata (optional: group info)
-  taxonomy_file = "taxa_name.csv",         # Taxonomy info per microbial feature
-  output_file = "microbe_pathway_network.csv",# Output file path
-  filtering = "median"                                 # Filtering threshold: options are "unfiltered", "mean", "median", "top10%", "top25%", "top50%", "top75%"
+  contrib_file = "path_abun_contrib.csv",      # Pathway contribution data file
+  metadata_file = "sample_metadata.csv",       # Sample metadata (required for grouping)
+  taxonomy_file = "taxa_name.csv",             # Taxonomy info per microbial feature
+  output_file = "microbe_pathway_network_results",     # Output directory for results
+  filtering = "median"
 )
 ```
 
