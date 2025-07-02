@@ -288,9 +288,7 @@ construct_microbe_pathway_network(
 )
 ```
 
-#### **Output**
-
-#### **Example Output**
+#### **Example output**
 
 The output `microbe_pathway_network.csv` is a network table showing which microbes (taxa) contribute to which pathways, along with their contribution values.
 
