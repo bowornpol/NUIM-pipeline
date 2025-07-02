@@ -181,9 +181,9 @@ pathway_pipeline.py \
 
 ## Module 2: Network construction
 
-This module constructs a tripartite network linking microbial taxa, functional pathways, and metabolites. Below, we provide R functions for constructing each network layer.
+This module constructs a tripartite network linking microbial taxa, functional pathways, and metabolites. Follow the steps below to construct each network layer using the provided R functions:
 
-### <ins>Microbe–pathway network</ins>
+### <ins>Step 1: Microbe–pathway network construction</ins>
 
 The microbe–pathway network is constructed from pathway contribution data, with edges representing the relative contribution of each microbe to specific pathways.
 
@@ -198,7 +198,6 @@ The microbe–pathway network is constructed from pathway contribution data, wit
 > `sample_metadata.csv` is optional if group-specific processing is not needed.  
 > `taxa_name.csv` is required to assign taxonomic labels to features.
 
-
 ```r
 library(dplyr)
 
@@ -206,7 +205,7 @@ construct_microbe_pathway_network <- function(
   contrib_file,
   metadata_file,
   taxonomy_file,
-  output_file = "microbe_pathway_network.csv",
+  output_file,
   filtering = c("unfiltered", "mean", "median", "top10%", "top25%", "top50%", "top75%")
 ) {
   filtering <- match.arg(filtering)
@@ -287,8 +286,6 @@ construct_microbe_pathway_network(
 
 The output `microbe_pathway_network.csv` is a network table showing which microbes (taxa) contribute to which pathways, along with their contribution values.
 
-Example:
-
 | FunctionID | TaxonID | total_abundance | total_abundance_all_taxa | relative_contribution | median_contribution |
 |------------|---------|------------------|----------------------------|------------------------|----------------------|
 | ko00365    | g__Bilophila | 44.5 | 44.5 | 1.0 | 1.0 |
@@ -300,11 +297,207 @@ Each row represents a weighted edge linking a microbial taxon (`TaxonID`) to a f
 - `total_abundance_all_taxa`: The total combined contribution of all taxa to the same pathway, used as a baseline for normalization.
 - `median_contribution` (and other thresholds like mean or top%) are shown in the table to indicate the filtering cutoff used for each pathway. This helps explain which taxa passed the filtering based on their relative contribution.
 
-### <ins>Pathway–pathway network</ins>
+### <ins>Step 2: Pathway–pathway network construction</ins>
 
-The pathway–pathway network is constructed using pathways identified as significant through Gene Set Enrichment Analysis (GSEA). Edges between pathways are defined based on shared genes, and Jaccard indices represent edge weights.  
+The pathway–pathway network is constructed using pathways identified as significant through Gene Set Enrichment Analysis (GSEA). Edges between pathways represent similarity based on shared genes, quantified by the Jaccard index.
 
-### <ins>Pathway–metabolite network</ins>
+#### **Required inputs**
+
+| File | Description |
+|---|---|
+| `pred_metagenome_unstrat.csv` | Predicted metagenome abundance table (pathway or gene abundance). Rows are genes/pathways, columns are samples. |
+| `sample_metadata.csv` | Sample metadata with group or condition information. **Required columns**: `SampleID`, `class`. |
+| `pathway_gene_map.csv` | Mapping file from pathways to genes. **First column: pathway ID; other columns: gene IDs.** |
+
+> This function supports any gene-to-pathway mapping file in the above format, not limited to KEGG.
+
+```r
+library(DESeq2)
+library(clusterProfiler)
+library(dplyr)
+library(tidyr)
+set.seed(123) # Set seed for reproducibility
+
+construct_pathway_pathway_network <- function(
+  abundance_file,
+  metadata_file,
+  map_file, 
+  output_file,
+  pvalueCutoff, 
+  pAdjustMethod = c("fdr", "holm", "hochberg", "hommel", "bonferroni", "BH", "BY", "none")
+) {
+  # Validate pAdjustMethod input
+  pAdjustMethod <- match.arg(pAdjustMethod)
+
+  # Create output directory if it doesn't exist
+  if (!dir.exists(output_file)) {
+    dir.create(output_file, recursive = TRUE)
+  }
+
+  # 1. Load abundance data from provided file (now reads CSV)
+  gene_abundance <- read.csv(abundance_file, header = TRUE, row.names = 1)
+  
+  # 2. Load sample metadata (now reads CSV)
+  metadata <- read.csv(metadata_file, header = TRUE)
+  
+  # Ensure the correct SampleID and class columns are present
+  if (!"SampleID" %in% colnames(metadata)) {
+    stop("The 'sample_metadata.csv' file must contain a 'SampleID' column.")
+  }
+  if (!"class" %in% colnames(metadata)) {
+    stop("The 'sample_metadata.csv' file must contain a 'class' column for group definition.")
+  }
+  
+  # 3. Filter metadata samples present in abundance data
+  # Use 'SampleID' for filtering and setting row names
+  sample_ids <- colnames(gene_abundance)
+  metadata <- metadata %>% filter(SampleID %in% sample_ids)
+  
+  # 4. Set 'condition' factor from 'class' column
+  metadata$condition <- as.factor(metadata$class)
+  rownames(metadata) <- metadata$SampleID # Use SampleID for row names
+  
+  # 5. Round abundance counts for DESeq2 compatibility
+  gene_abundance_rounded <- round(gene_abundance)
+  
+  # Ensure sample order matches between countData and colData
+  gene_abundance_rounded <- gene_abundance_rounded[, rownames(metadata)]
+
+  # 6. Create DESeq2 dataset and run differential expression analysis
+  dds <- DESeqDataSetFromMatrix(countData = gene_abundance_rounded,
+                                colData = metadata,
+                                design = ~ condition)
+  dds <- DESeq(dds)
+  
+  # 7. Get all pairwise condition comparisons
+  conditions <- levels(metadata$condition)
+  comparisons <- combn(conditions, 2, simplify = FALSE)
+  
+  # 8. Load pathway-to-gene mapping and reshape into TERM2GENE format (now reads CSV)
+  # The input file format is: V1 (pathway_id) V2 (gene_id1) V3 (gene_id2) ...
+  # This is the direct format for TERM2GENE where TERM is V1 and GENE are others.
+  map_raw <- read.csv(map_file, header = FALSE, fill = TRUE, stringsAsFactors = FALSE, skip = 1)
+  
+  TERM2GENE <- map_raw %>%
+    gather(key = "temp_col", value = "gene", -V1) %>% # V1 becomes 'term', others become 'gene'
+    select(term = V1, gene) %>%
+    filter(gene != "") %>% # Remove empty gene entries
+    distinct() # Ensure unique pathway-gene pairs
+  
+  gsea_results_list <- list()
+  
+  # 9. Loop over each pairwise comparison to run GSEA
+  for (comp in comparisons) {
+    cond1 <- comp[1]
+    cond2 <- comp[2]
+    
+    # Get DESeq2 results for contrast cond2 vs cond1
+    res <- results(dds, contrast = c("condition", cond2, cond1))
+    
+    # Prepare ranked gene list: sign(log2FoldChange) * -log10(pvalue)
+    ranked_df <- as.data.frame(res[, c("log2FoldChange", "pvalue")])
+    ranked_df <- ranked_df[!is.na(ranked_df$log2FoldChange) & !is.na(ranked_df$pvalue), ]
+    ranked_df$rank <- sign(ranked_df$log2FoldChange) * -log10(ranked_df$pvalue)
+    ranked_df <- ranked_df[order(ranked_df$rank, decreasing = TRUE), ]
+    geneList <- setNames(ranked_df$rank, rownames(ranked_df))
+    
+    # Run GSEA using clusterProfiler
+    gsea_res <- GSEA(geneList = geneList,
+                     TERM2GENE = TERM2GENE,
+                     pvalueCutoff = pvalueCutoff,
+                     pAdjustMethod = pAdjustMethod,
+                     seed = TRUE,
+                     verbose = FALSE)
+    
+    # Save GSEA results dataframe
+    gsea_df <- as.data.frame(gsea_res)
+    key <- paste0(cond1, "_vs_", cond2)
+    gsea_results_list[[key]] <- gsea_df
+    
+    # Construct full output path for GSEA results
+    gsea_output_path <- file.path(output_file, paste0("gsea_results_", key, ".csv"))
+    write.csv(gsea_df, gsea_output_path, row.names = FALSE)
+  }
+  
+  # 10. Compute Jaccard indices between pathways within each comparison's GSEA results
+  jaccard_results_list <- list()
+  
+  for (key in names(gsea_results_list)) {
+    gsea_df <- gsea_results_list[[key]]
+    gene_sets <- strsplit(as.character(gsea_df$core_enrichment), "/")
+    gene_sets <- lapply(gene_sets, function(x) unique(na.omit(x)))
+    
+    n <- length(gene_sets)
+    res_list <- list()
+    
+    if (n < 2) { # Ensure there are at least two pathways to compare
+      message(paste("Less than two significant pathways for comparison:", key, ". Skipping Jaccard index calculation."))
+      next
+    }
+
+    for (i in 1:(n-1)) {
+      for (j in (i+1):n) {
+        genes_i <- gene_sets[[i]]
+        genes_j <- gene_sets[[j]]
+        intersection <- length(intersect(genes_i, genes_j))
+        union <- length(union(genes_i, genes_j))
+        jaccard <- ifelse(union == 0, 0, intersection / union)
+        
+        if (jaccard > 0) {
+          res_list[[length(res_list) + 1]] <- data.frame(
+            pathway_1 = gsea_df$ID[i],
+            pathway_2 = gsea_df$ID[j],
+            jaccard_index = jaccard,
+            comparison = key,
+            stringsAsFactors = FALSE
+          )
+        }
+      }
+    }
+    
+    jaccard_df <- do.call(rbind, res_list)
+    # Construct full output path for Jaccard results
+    jaccard_output_path <- file.path(output_file, paste0("pathway_jaccard_", key, ".csv"))
+    write.csv(jaccard_df, jaccard_output_path, row.names = FALSE)
+    jaccard_results_list[[key]] <- jaccard_df
+  }
+  
+  # Return GSEA and Jaccard results for further use
+  return(list(gsea = gsea_results_list, jaccard = jaccard_results_list))
+}
+
+# Example usage:
+construct_pathway_pathway_network(
+   abundance_file = "pred_metagenome_unstrat.csv", 
+   metadata_file = "sample_metadata.csv",          
+   map_file = "pathway_gene_map.csv",              
+   output_file = "pathway_network_results", # Path to the output directory that will contain results for each comparison        
+   pvalueCutoff = 0.05, # User MUST specify this value, e.g., 0.05
+   pAdjustMethod = "BH" # User can choose from "holm", "hochberg", "hommel", "bonferroni", "BH", "BY", "fdr", "none"
+)
+```
+#### **Example Output**
+
+The function creates an output directory (e.g., `pathway_network_results`) containing `.csv` files for each pairwise group comparison (e.g., `G1_vs_G2`).
+
+For each comparison, two types of files are generated:
+
+1.  **`gsea_results_[group1]_vs_[group2].csv`**: Contains detailed Gene Set Enrichment Analysis (GSEA) results for pathways. Each row describes an enriched pathway, including its ID, description, enrichment score (NES), and adjusted p-value (`p.adjust`). The `core_enrichment` column lists the key genes driving the enrichment.
+
+2.  **`pathway_jaccard_[group1]_vs_[group2].csv`**: Quantifies the similarity between *significant* pathways based on shared "core enriched" genes using the Jaccard index. This table defines the edges of the pathway-pathway network.
+
+**Example Table: `pathway_jaccard_G1_vs_G2.csv`**
+
+| pathway_1 | pathway_2 | jaccard_index | comparison |
+|:----------|:----------|:--------------|:-----------|
+| ko00500   | ko00230   | 0.02173913    | G1_vs_G2   |
+| ko00500   | ko00030   | 0.035714286   | G1_vs_G2   |
+| ko00500   | ko00052   | 0.083333333   | G1_vs_G2   |
+| ko00550   | ko00470   | 0.064516129   | G1_vs_G2   |
+
+Each row represents a connection between two pathways (`pathway_1`, `pathway_2`). The `jaccard_index` (0-1) indicates the degree of shared genes between them; a higher value means more overlap and a stronger functional relationship. This data can be used to visualize a network where pathways are nodes and Jaccard indices are edge weights.
+
+### <ins>Pathway–metabolite network construction</ins>
 
 The pathway–metabolite network is constructed by calculating pairwise correlation (e.g., Spearman or Pearson) between pathway abundance and metabolite concentrations.  
 
