@@ -20,8 +20,10 @@ This section provides a general QIIME2 workflow for processing paired-end 16S rR
 
 #### **Required Inputs**
 
-- `FASTQ` files: Raw paired-end sequencing reads for each sample.  
-- `manifest.csv`: Lists sample IDs and the paths to their FASTQ files.  
+| File            | Description                         |
+|-----------------|-----------------------------------|
+| `FASTQ`         | Raw paired-end sequencing reads   |
+| `manifest.csv`  | Mapping of sample IDs to FASTQ files |  
 
 <p align="center">
   <img src="figures/QIIME2_overview.png" width="500"/>
