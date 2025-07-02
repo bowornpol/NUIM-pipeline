@@ -474,7 +474,7 @@ construct_pathway_pathway_network(
    pAdjustMethod = "BH" # User can choose from "holm", "hochberg", "hommel", "bonferroni", "BH", "BY", "fdr", "none"
 )
 ```
-#### **Example Output**
+#### **Example output**
 
 The function creates an output directory (e.g., `pathway_network_results`) containing `.csv` files for each pairwise group comparison (e.g., `G1_vs_G2`).
 
@@ -484,7 +484,7 @@ For each comparison, two types of files are generated:
 
 2.  **`pathway_jaccard_[group1]_vs_[group2].csv`**: Quantifies the similarity between *significant* pathways based on shared "core enriched" genes using the Jaccard index. This table defines the edges of the pathway-pathway network.
 
-**Example Table: `pathway_jaccard_G1_vs_G2.csv`**
+**Example table: `pathway_jaccard_G1_vs_G2.csv`**
 
 | pathway_1 | pathway_2 | jaccard_index | comparison |
 |:----------|:----------|:--------------|:-----------|
@@ -493,7 +493,7 @@ For each comparison, two types of files are generated:
 | ko00500   | ko00052   | 0.083333333   | G1_vs_G2   |
 | ko00550   | ko00470   | 0.064516129   | G1_vs_G2   |
 
-Each row represents a connection between two pathways (`pathway_1`, `pathway_2`). The `jaccard_index` (0-1) indicates the degree of shared genes between them; a higher value means more overlap and a stronger functional relationship. This data can be used to visualize a network where pathways are nodes and Jaccard indices are edge weights.
+Each row represents a connection between two pathways (`pathway_1`, `pathway_2`). The `jaccard_index` (0-1) indicates the degree of shared genes between them; a higher value means more overlap and a stronger functional relationship. 
 
 ### <ins>Pathway–metabolite network construction</ins>
 
