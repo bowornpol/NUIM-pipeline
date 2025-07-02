@@ -12,23 +12,75 @@ This module defines the procedures required to prepare and process the input dat
 - Microbiome data processing involves the use of QIIME2 to generate a feature table and representative sequences. These outputs are subsequently processed using PICRUSt2 for functional prediction, yielding gene abundance, pathway abundance, and pathway contribution data.  
 - Although metabolome data processing may vary depending on user preference and experimental design, NUIM assumes that metabolite concentrations have been appropriately processed by standard practice. For example, users may employ established platforms such as Metabox or MetaboAnalyst to perform normalization, transformation, and quality control of metabolomics data.
 
+### QIIME2 Command Line Example
 
----
-
-```markdown
-### PICRUSt2 Command Line Example
+This section provides a general QIIME2 workflow for processing paired-end 16S rRNA sequencing data. The goal is to generate a feature table and representative sequences for downstream analysis in the NUIM pipeline.
 
 ```bash
-# Place representative sequences fasta file in your working directory
-# Run PICRUSt2 pipeline for functional prediction
+# STEP 1: Import paired-end FASTQ files using a manifest file
+# The manifest CSV should map sample IDs to file paths of forward and reverse reads.
+qiime tools import \
+  --type 'SampleData[PairedEndSequencesWithQuality]' \
+  --input-path manifest.csv \
+  --input-format PairedEndFastqManifestPhred33 \
+  --output-path demux_reads.qza
 
-picrust2_pipeline.py \
-  -s rep-seqs.fasta \
-  -i feature-table.biom \
-  -o picrust2_out \
-  -p 4
+# STEP 2: Trim primers/adapters
+# Replace the primer sequences below with the ones used in your sequencing protocol.
+qiime cutadapt trim-paired \
+  --i-demultiplexed-sequences demux_reads.qza \
+  --p-front-f <forward_primer_sequence> \
+  --p-front-r <reverse_primer_sequence> \
+  --o-trimmed-sequences trimmed_reads.qza
 
-# Outputs include predicted gene family abundances, pathway abundances, and pathway contributions
+# STEP 3: Summarize read quality
+# Review this visualization to determine appropriate truncation lengths for the next step.
+qiime demux summarize \
+  --i-data trimmed_reads.qza \
+  --o-visualization quality_summary.qzv
+
+# STEP 4: Denoise reads using DADA2
+# Use the quality summary from Step 3 to choose truncation lengths and other parameters.
+qiime dada2 denoise-paired \
+  --i-demultiplexed-seqs trimmed_reads.qza \
+  --p-trunc-len-f <truncation_length_forward> \
+  --p-trunc-len-r <truncation_length_reverse> \
+  --o-table feature_table.qza \
+  --o-representative-sequences rep_seqs.qza \
+  --o-denoising-stats denoising_stats.qza
+
+# STEP 5: Filter low-abundance features
+# Adjust minimum sample count and read frequency as appropriate for your dataset.
+qiime feature-table filter-features \
+  --i-table feature_table.qza \
+  --p-min-samples <minimum_number_of_samples> \
+  --p-min-frequency <minimum_total_frequency> \
+  --o-filtered-table filtered_table.qza
+
+# STEP 6: Rarefy the table to a uniform sequencing depth
+# Use rarefaction curves to help select the sampling depth.
+qiime feature-table rarefy \
+  --i-table filtered_table.qza \
+  --p-sampling-depth <depth_to_rarefy> \
+  --o-rarefied-table rarefied_table.qza
+
+# STEP 7: Filter representative sequences to match rarefied table
+qiime feature-table filter-seqs \
+  --i-data rep_seqs.qza \
+  --i-table rarefied_table.qza \
+  --o-filtered-data filtered_rep_seqs.qza
+
+# STEP 8: Taxonomic classification
+# Use a pre-trained classifier appropriate for your 16S region (e.g., SILVA, Greengenes).
+qiime feature-classifier classify-sklearn \
+  --i-classifier <pretrained_classifier.qza> \
+  --i-reads filtered_rep_seqs.qza \
+  --o-classification taxonomy.qza
+
+# STEP 9 (Optional): Export data for downstream tools
+qiime tools export --input-path rarefied_table.qza --output-path exported_feature_table
+qiime tools export --input-path filtered_rep_seqs.qza --output-path exported_sequences
+qiime tools export --input-path taxonomy.qza --output-path exported_taxonomy
 ```
 
 ### Module 2: Network Construction
