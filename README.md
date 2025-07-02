@@ -625,14 +625,14 @@ construct_pathway_pathway_network(
    abundance_file = "pred_metagenome_unstrat.csv", 
    metadata_file = "sample_metadata.csv",          
    map_file = "pathway_gene_map.csv",              
-   output_file = "pathway_network_results", # Path to the output directory that will contain results for each comparison        
+   output_file = "pathway_pathway_network_results", # Path to the output directory that will contain results for each comparison        
    pvalueCutoff = 0.05, # User MUST specify this value, e.g., 0.05
    pAdjustMethod = "BH" # User can choose from "holm", "hochberg", "hommel", "bonferroni", "BH", "BY", "fdr", "none"
 )
 ```
 #### **Example output**
 
-The function creates an output directory (e.g., `pathway_network_results`) containing `.csv` files for each pairwise group comparison (e.g., `G1_vs_G2`).
+The function creates an output directory (e.g., `pathway_pathway_network_results`) containing `.csv` files for each pairwise group comparison (e.g., `G1_vs_G2`).
 
 For each comparison, two types of files are generated:
 
