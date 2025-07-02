@@ -300,11 +300,11 @@ Each row represents a weighted edge linking a microbial taxon (`TaxonID`) to a f
 - `total_abundance_all_taxa`: The total combined contribution of all taxa to the same pathway, used as a baseline for normalization.
 - `median_contribution` (and other thresholds like mean or top%) are shown in the table to indicate the filtering cutoff used for each pathway. This helps explain which taxa passed the filtering based on their relative contribution.
 
-### <ins>Pathway–pathway network construction</ins>
+### <ins>Pathway–pathway network</ins>
 
 The pathway–pathway network is constructed using pathways identified as significant through Gene Set Enrichment Analysis (GSEA). Edges between pathways are defined based on shared genes, and Jaccard indices represent edge weights.  
 
-### <ins>Pathway–metabolite network construction</ins>
+### <ins>Pathway–metabolite network</ins>
 
 The pathway–metabolite network is constructed by calculating pairwise correlation (e.g., Spearman or Pearson) between pathway abundance and metabolite concentrations.  
 
