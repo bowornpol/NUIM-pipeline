@@ -130,7 +130,7 @@ picrust2_pipeline.py \
 # Optional: Add --max_nsti to filter low-confidence ASVs
 # e.g., --max_nsti 0.5
 
-# Map predicted functions to pathways
+# Infer pathway abundance and pathway contribution
 # Users can choose to use either KEGG or MetaCyc pathways
 
 # Generate pathway abundance data (sample × pathway)
