@@ -2,6 +2,8 @@
 
 We developed NUIM, a modular, network-based framework for integrating microbiome and metabolome data systematically. NUIM consists of three modules: (1) data preparation and processing, (2) network construction, and (3) network analysis.
 
+![Overview of the NUIM pipeline](figures/NUIM_overview.png)
+
 ### Module 1: Data Preparation and Processing
 
 This module defines the procedures required to prepare and process the input data for downstream network construction and analysis.
@@ -9,6 +11,25 @@ This module defines the procedures required to prepare and process the input dat
 - Input data includes `microbial sequencing reads in FASTQ format` and `metabolite concentration table`.  
 - Microbiome data processing involves the use of QIIME2 to generate a feature table and representative sequences. These outputs are subsequently processed using PICRUSt2 for functional prediction, yielding gene abundance, pathway abundance, and pathway contribution data.  
 - Although metabolome data processing may vary depending on user preference and experimental design, NUIM assumes that metabolite concentrations have been appropriately processed by standard practice. For example, users may employ established platforms such as Metabox or MetaboAnalyst to perform normalization, transformation, and quality control of metabolomics data.
+
+
+---
+
+```markdown
+### PICRUSt2 Command Line Example
+
+```bash
+# Place representative sequences fasta file in your working directory
+# Run PICRUSt2 pipeline for functional prediction
+
+picrust2_pipeline.py \
+  -s rep-seqs.fasta \
+  -i feature-table.biom \
+  -o picrust2_out \
+  -p 4
+
+# Outputs include predicted gene family abundances, pathway abundances, and pathway contributions
+```
 
 ### Module 2: Network Construction
 
