@@ -344,7 +344,7 @@ construct_microbe_pathway_network <- function(
 }
 ```
 
-### **Example usage**
+#### **Example usage**
 
 ```
 construct_microbe_pathway_network(
@@ -358,7 +358,9 @@ construct_microbe_pathway_network(
 
 #### **Example output**
 
-The output `microbe_pathway_network.csv` is a network table showing which microbes (taxa) contribute to which pathways, along with their contribution values.
+The function generates a directory (e.g., `microbe_pathway_network_results`), which contains output files specific to the group analyzed and the filtering method applied (e.g., `microbe_pathway_network_G2_median.csv`).
+
+**Example table: `microbe_pathway_network_G2_median.csv`**
 
 | FunctionID | TaxonID            | total_abundance | total_abundance_all_taxa | relative_contribution | median_contribution |
 |:-----------|:-------------------|:----------------|:-------------------------|:----------------------|:--------------------|
@@ -648,7 +650,7 @@ construct_pathway_pathway_network <- function(
 }
 ```
 
-### **Example usage**
+#### **Example usage**
 
 ```
 construct_pathway_pathway_network(
@@ -925,7 +927,7 @@ construct_pathway_metabolite_network <- function(
 }
 ```
 
-### **Example usage**
+#### **Example usage**
 
 ```
 construct_pathway_metabolite_network(
@@ -1153,7 +1155,7 @@ construct_multi_layered_network <- function(
 }
 ```
 
-### **Example usage**
+#### **Example usage**
 
 ```
 # Define the full path and filename for your input CSV file
@@ -1175,11 +1177,11 @@ construct_multi_layered_network(
 )
 ```
 
-### **Example output**
+#### **Example output**
 
 The `construct_multi_layered_network` function generates a single CSV file at the specified `output_file` path (e.g., `results/multi_layered_network.csv`). This file integrates all specified network layers, filtered to include only edges connected to GSEA-identified pathways, and presented in a standardized format.
 
-**Example table: `multi_layered_network.csv`**
+**Example table: `multi_layered_network_G2.csv`**
 
 | Feature1      | Feature2      | Edge_Score      | Edge_Type           |
 | :------------ | :------------ | :-------------- | :------------------ |
