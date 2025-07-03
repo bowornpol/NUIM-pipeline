@@ -954,10 +954,10 @@ The function creates an output directory (e.g., `pathway_metabolite_network_resu
 
 | FunctionID | MetaboliteID | Correlation | P_value | Q_value | Group |
 |:-----------|:-------------|:------------|:--------|:--------|:------|
-| ko00010    | M_glucose    | 0.82        | 0.001   | 0.005   | G2    |
-| ko00020    | M_amino_acid | -0.75       | 0.003   | 0.008   | G2    |
-| ko00300    | M_lipid      | 0.68        | 0.015    | 0.023    | G2    |
-| ko00400    | M_vitB       | -0.62       | 0.025   | 0.041    | G2    |
+| ko00010    | acetate    | 0.82        | 0.001   | 0.005   | G2    |
+| ko00020    | butyrate | -0.75       | 0.003   | 0.008   | G2    |
+| ko00300    | propionate      | 0.68        | 0.015    | 0.023    | G2    |
+| ko00400    | lactate       | -0.62       | 0.025   | 0.041    | G2    |
 | ...        | ...          | ...         | ...     | ...     | ...   |
 
 Each row represents a correlation (edge) between a pathway (`FunctionID`) and a metabolite (`MetaboliteID`).
@@ -1191,8 +1191,8 @@ The `construct_multi_layered_network` function generates a single CSV file at th
 | g__Bifidobacterium  | ko00020       | 0.90            | Microbe-Pathway     |
 | ko00010       | ko00020       | 0.15            | Pathway-Pathway     |
 | ko00020       | ko00052       | 0.21            | Pathway-Pathway     |
-| ko00010       | M_glucose     | 0.78            | Pathway-Metabolite  |
-| ko00030       | M_acetate     | 0.55            | Pathway-Metabolite  |
+| ko00010       | butyrate     | 0.78            | Pathway-Metabolite  |
+| ko00030       | acetate     | 0.55            | Pathway-Metabolite  |
 | ...           | ...           | ...             | ...                 |
 
 Each row represents a connection between two features (`Feature1`, `Feature2`).
@@ -1519,11 +1519,11 @@ The `node_prioritization` function generates multiple output files for each meta
 2.  **`spearman_correlations_*.csv`**: A CSV file detailing the Spearman correlations between heat vectors at consecutive time steps, used for stabilization assessment.
 3.  **`correlation_plot_*.jpg`**: A JPEG image visualizing the Spearman correlations over time, with the identified stabilization time marked.
 
-**Example table: `heat_scores_M_acetate_filtered_metabolite_nodes.csv` (when `filter_other_metabolite_edges = TRUE`)**
+**Example table: `heat_scores_acetate_filtered_metabolite_nodes.csv` (when `filter_other_metabolite_edges = TRUE`)**
 
 | Node | Heat_Score |
 | :------------- | :---------- |
-| M_acetate | 0.480 |
+| acetate | 0.480 |
 | ko00010 | 0.123 |
 | g__Blautia | 0.106 |
 | ko00400 | 0.088 |
