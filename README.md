@@ -684,7 +684,9 @@ For each comparison, two types of files are generated:
 | ko00550    | ko00470    | 0.064         | G1_vs_G2   |
 | ...        | ...        | ...           | ...        |
 
-Each row represents a connection between two pathways (`pathway_1`, `pathway_2`). The `jaccard_index` (0-1) indicates the degree of shared genes between them; a higher value means more overlap and a stronger functional relationship. 
+Each row represents a connection between two pathways (`pathway_1`, `pathway_2`). 
+- `jaccard_index`: A value from 0 to 1 indicating the degree of shared genes between the two pathways; a higher value means more overlap and a stronger functional relationship.
+- `comparison`: Specifies the pairwise group comparison for which this Jaccard index was calculated. 
 
 ### <ins>STEP 3: Pathway–metabolite network construction</ins>
 
