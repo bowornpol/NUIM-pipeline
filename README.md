@@ -382,7 +382,9 @@ construct_microbe_pathway_network <- function(
   }
   message("Microbe-pathway network construction complete.")
 }
+```
 
+```
 # Example usage:
 construct_microbe_pathway_network(
   contrib_file = "path_abun_contrib.csv",      
@@ -681,7 +683,9 @@ construct_pathway_pathway_network <- function(
   }
   message("Pathway-pathway network construction complete.")
 }
+```
 
+```
 # Example usage:
 construct_pathway_pathway_network(
    abundance_file = "pred_metagenome_unstrat.csv", 
@@ -693,6 +697,7 @@ construct_pathway_pathway_network(
    rank_by = "signed_log_pvalue" # User can choose from "signed_log_pvalue" or "log2FoldChange"
 )
 ```
+
 #### **Example output**
 
 The function creates an output directory (e.g., `pathway_pathway_network_results`) containing `.csv` files for each pairwise group comparison (e.g., `G1_vs_G2`).
@@ -952,7 +957,9 @@ construct_pathway_metabolite_network <- function(
   }
   message("Pathway-metabolite network construction complete.")
 }
+```
 
+```
 # Example usage:
 construct_pathway_metabolite_network(
   pathway_abundance_file = "path_abun_unstrat.csv", 
@@ -967,6 +974,7 @@ construct_pathway_metabolite_network(
   q_adjust_method = "fdr" # Choose "bonferroni" or "fdr" if filter_by = "q_value"
 )
 ```
+
 #### **Example output**
 
 The function creates an output directory (e.g., `pathway_metabolite_network_results`) containing `.csv` files for each group analyzed (e.g., `pathway_metabolite_network_G1.csv`, `pathway_metabolite_network_G2.csv`, or `pathway_metabolite_network_overall.csv` if no groups are defined).
