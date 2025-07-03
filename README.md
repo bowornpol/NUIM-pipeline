@@ -128,7 +128,7 @@ PICRUSt2 predicts functional profiles from 16S rRNA data. This step uses a featu
 |---------------------|---------------------------------|
 | `feature-table.biom` | Feature table exported from QIIME2. |
 | `rep_seqs.fasta`    | Representative sequences exported from QIIME2. |
-| `pathway_gene_map.tsv` | Maps pathway IDs to their associated gene/KO IDs. **First column:** pathway ID; **other columns:** gene IDs. |
+| `pathway_gene_map.tsv` | Maps pathway IDs to their associated gene/KO IDs. **First column:** pathway IDs; **other columns:** gene IDs. |
 
 <p align="center">
   <img src="figures/PICRUSt2_overview.png" width="700"/>
@@ -203,7 +203,7 @@ construct_microbe_pathway_network <- function(
   contrib_file,
   metadata_file,
   taxonomy_file,
-  output_file, # Now directly the output directory path
+  output_file, 
   filtering = c("unfiltered", "mean", "median", "top10%", "top25%", "top50%", "top75%")
 ) {
   filtering <- match.arg(filtering)
@@ -418,7 +418,7 @@ The pathway–pathway network is constructed using pathways identified as signif
 |---|---|
 | `pred_metagenome_unstrat.csv` | Gene abundance data from PICRUSt2. |
 | `sample_metadata.csv` | Sample metadata with group or condition information. **Required columns**: `SampleID`, `class`. |
-| `pathway_gene_map.csv` | Maps pathway IDs to their associated gene/KO IDs. **First column:** pathway ID; **other columns:** gene IDs. |
+| `pathway_gene_map.csv` | Maps pathway IDs to their associated gene/KO IDs. **First column:** pathway IDs; **other columns:** gene IDs. |
 
 ```r
 library(DESeq2)
@@ -717,6 +717,276 @@ Each row represents a connection between two pathways (`pathway_1`, `pathway_2`)
 ### <ins>Pathway–metabolite network construction</ins>
 
 The pathway–metabolite network is constructed by calculating pairwise correlation (e.g., Spearman or Pearson) between pathway abundance and metabolite concentrations.  
+
+#### **Required inputs**
+
+| File                        | Description                                                                                                                              |
+|:----------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------|
+| `path_abun_unstrat.csv`     | Pathway abundance data. First column: `SampleID`; other columns: `Function IDs`. Values will be converted to relative abundance within the function. |
+| `metabolite_concentration.csv` | Metabolite concentration data. First column: `SampleID`; other columns: metabolite names.                                                |
+| `sample_metadata.csv`       | (Optional) Sample metadata with group or condition information. Required columns: `SampleID`, `class`. If not provided or class column is missing, correlations will be performed on the overall dataset. |
+
+```r
+library(dplyr)
+library(tidyr)
+
+construct_pathway_metabolite_network <- function(
+  pathway_abundance_file,
+  metabolite_concentration_file,
+  output_file,
+  metadata_file,
+  correlation_method = c("spearman", "pearson"),
+  filter_by = c("none", "p_value", "q_value"),
+  corr_cutoff,
+  p_value_cutoff,
+  q_value_cutoff,
+  q_adjust_method = c("bonferroni", "fdr")
+) {
+  # Validate inputs
+  correlation_method <- match.arg(correlation_method)
+  filter_by <- match.arg(filter_by)
+  q_adjust_method <- match.arg(q_adjust_method)
+
+  message("Starting pathway-metabolite network construction.")
+  message("Correlation method: ", correlation_method)
+  message("Filtering results by: ", filter_by)
+
+  if (filter_by == "p_value" && is.null(p_value_cutoff)) {
+    stop("Error: 'p_value_cutoff' must be specified if 'filter_by' is 'p_value'.")
+  }
+  if (filter_by == "q_value" && is.null(q_value_cutoff)) {
+    stop("Error: 'q_value_cutoff' must be specified if 'filter_by' is 'q_value'.")
+  }
+
+  message("Absolute correlation coefficient cutoff: ", corr_cutoff)
+  if (filter_by == "p_value") message("P-value cutoff: ", p_value_cutoff)
+  if (filter_by == "q_value") message("Q-value cutoff: ", q_value_cutoff, " (using ", q_adjust_method, " correction)")
+
+  # Create output directory if it doesn't exist
+  if (!dir.exists(output_file)) {
+    dir.create(output_file, recursive = TRUE)
+    message("Created output directory: ", output_file)
+  } else {
+    message("Output directory already exists: ", output_file)
+  }
+
+  # 1. Load data
+  message("1. Loading pathway abundance and metabolite concentration data...")
+  pathway_abun <- tryCatch(
+    read.csv(pathway_abundance_file, header = TRUE, row.names = 1, stringsAsFactors = FALSE),
+    error = function(e) {
+      stop(paste("Error loading pathway abundance file '", pathway_abundance_file, "': ", e$message, sep = ""))
+    }
+  )
+  metabolite_conc <- tryCatch(
+    read.csv(metabolite_concentration_file, header = TRUE, row.names = 1, stringsAsFactors = FALSE),
+    error = function(e) {
+      stop(paste("Error loading metabolite concentration file '", metabolite_concentration_file, "': ", e$message, sep = ""))
+    }
+  )
+  message("   Loaded pathway abundance. Dimensions: ", paste(dim(pathway_abun), collapse = "x"))
+  message("   Loaded metabolite concentration. Dimensions: ", paste(dim(metabolite_conc), collapse = "x"))
+
+  # 2. Load metadata if provided
+  metadata <- NULL
+  if (!is.null(metadata_file)) {
+    message("2. Loading sample metadata from: ", metadata_file)
+    metadata <- tryCatch(
+      read.csv(metadata_file, header = TRUE, stringsAsFactors = FALSE),
+      error = function(e) {
+        warning(paste("Warning: Error loading metadata file '", metadata_file, "': ", e$message, ". Proceeding without group-specific analysis.", sep = ""))
+        return(NULL)
+      }
+    )
+    if (!is.null(metadata)) {
+      message("   Loaded metadata. Dimensions: ", paste(dim(metadata), collapse = "x"))
+      if (!"SampleID" %in% colnames(metadata)) {
+        warning("Metadata file missing 'SampleID' column. Proceeding without group-specific analysis.")
+        metadata <- NULL
+      } else if (!"class" %in% colnames(metadata)) {
+        warning("Metadata file missing 'class' column. Proceeding without group-specific analysis.")
+        metadata <- NULL
+      } else {
+        metadata$SampleID <- as.character(metadata$SampleID)
+        metadata$class <- as.factor(metadata$class)
+        rownames(metadata) <- metadata$SampleID
+      }
+    }
+  } else {
+    message("2. No metadata file provided. Performing correlation on overall dataset.")
+  }
+
+  # 3. Data preparation: Ensure SampleIDs align and convert pathway abundance to relative values
+  message("3. Preparing data for correlation...")
+
+  # Merge data to get common samples and align
+  common_samples <- intersect(rownames(pathway_abun), rownames(metabolite_conc))
+  if (!is.null(metadata)) {
+    common_samples <- intersect(common_samples, rownames(metadata))
+  }
+
+  if (length(common_samples) == 0) {
+    stop("No common samples found between pathway abundance, metabolite concentration, and metadata (if provided).")
+  }
+  message("   Number of common samples: ", length(common_samples))
+
+  pathway_abun_filtered <- pathway_abun[common_samples, , drop = FALSE]
+  metabolite_conc_filtered <- metabolite_conc[common_samples, , drop = FALSE]
+  if (!is.null(metadata)) {
+    metadata_filtered <- metadata[common_samples, , drop = FALSE]
+  } else {
+    metadata_filtered <- data.frame(SampleID = common_samples, class = "overall", row.names = common_samples)
+  }
+
+  # Convert pathway abundance to relative values (row-wise normalization)
+  # Sum of all pathway abundances for each sample
+  pathway_abun_sum_per_sample <- rowSums(pathway_abun_filtered, na.rm = TRUE)
+  # Replace 0 sums with 1 to avoid NaN/Inf for division, but keep values 0 in this case
+  pathway_abun_relative <- pathway_abun_filtered / ifelse(pathway_abun_sum_per_sample == 0, 1, pathway_abun_sum_per_sample)
+  # For rows that originally summed to zero, they should remain zero after division by 1.
+  # Ensure if original value was NA, it remains NA.
+  pathway_abun_relative[is.na(pathway_abun_filtered)] <- NA
+  message("   Pathway abundance converted to relative values (sum per sample).")
+
+  # Ensure all data are numeric
+  pathway_abun_relative[] <- lapply(pathway_abun_relative, as.numeric)
+  metabolite_conc_filtered[] <- lapply(metabolite_conc_filtered, as.numeric)
+
+  # Prepare groups for iteration
+  groups_to_process <- unique(metadata_filtered$class)
+  all_correlation_results <- list()
+
+  # 4. Loop over each group to perform correlations
+  message("4. Performing correlations for each group...")
+  for (current_group in groups_to_process) {
+    message("   Processing group: '", current_group, "'")
+
+    samples_in_group <- rownames(metadata_filtered[metadata_filtered$class == current_group, , drop = FALSE])
+
+    path_data_group <- pathway_abun_relative[samples_in_group, , drop = FALSE]
+    met_data_group <- metabolite_conc_filtered[samples_in_group, , drop = FALSE]
+
+    # Check for sufficient samples for correlation
+    # Filter out columns that are all NA or have zero variance within the group
+    path_data_group_clean <- path_data_group[, colSums(is.na(path_data_group)) != nrow(path_data_group) & apply(path_data_group, 2, var, na.rm=TRUE) != 0, drop = FALSE]
+    met_data_group_clean <- met_data_group[, colSums(is.na(met_data_group)) != nrow(met_data_group) & apply(met_data_group, 2, var, na.rm=TRUE) != 0, drop = FALSE]
+
+    if (ncol(path_data_group_clean) == 0 || ncol(met_data_group_clean) == 0 || nrow(path_data_group_clean) < 3) {
+      warning("   Not enough valid (non-constant, non-NA) data or samples (less than 3) in group '", current_group, "' to perform meaningful correlations. Skipping.")
+      next
+    }
+
+    # Calculate correlation matrix using stats::cor
+    corr_matrix <- cor(path_data_group_clean, met_data_group_clean, method = correlation_method, use = "pairwise.complete.obs")
+
+    # Initialize p-value matrix
+    p_matrix <- matrix(NA, nrow = nrow(corr_matrix), ncol = ncol(corr_matrix),
+                       dimnames = dimnames(corr_matrix))
+
+    # Calculate p-values for each correlation coefficient
+    # Using t-distribution approximation for both Pearson and Spearman
+    for (i in 1:nrow(corr_matrix)) { # Loop through pathways
+      for (j in 1:ncol(corr_matrix)) { # Loop through metabolites
+        r_val <- corr_matrix[i, j]
+        if (!is.na(r_val)) {
+          # Get actual number of complete observations for this specific pair
+          valid_pairs_count <- sum(complete.cases(path_data_group_clean[, rownames(corr_matrix)[i]],
+                                                  met_data_group_clean[, colnames(corr_matrix)[j]]))
+
+          if (valid_pairs_count >= 3) {
+            t_statistic <- r_val * sqrt((valid_pairs_count - 2) / (1 - r_val^2))
+            p_matrix[i, j] <- 2 * stats::pt(abs(t_statistic), df = valid_pairs_count - 2, lower.tail = FALSE)
+          }
+        }
+      }
+    }
+
+
+    # Reshape results into long format
+    corr_long <- as.data.frame(corr_matrix) %>%
+      tibble::rownames_to_column(var = "FunctionID") %>% # Changed to FunctionID
+      pivot_longer(cols = -FunctionID, names_to = "MetaboliteID", values_to = "Correlation")
+
+    p_long <- as.data.frame(p_matrix) %>%
+      tibble::rownames_to_column(var = "FunctionID") %>% # Changed to FunctionID
+      pivot_longer(cols = -FunctionID, names_to = "MetaboliteID", values_to = "P_value")
+
+    # Combine correlation and p-value data
+    combined_results <- left_join(corr_long, p_long, by = c("FunctionID", "MetaboliteID")) # Changed to FunctionID
+    
+    # Remove rows where correlation or p-value is NA (due to insufficient valid pairs)
+    combined_results <- combined_results %>% filter(!is.na(Correlation) & !is.na(P_value))
+
+    # 5. Apply filtering based on user choice
+    message("   Applying filters for group '", current_group, "'...")
+
+    # Filter by absolute correlation coefficient first
+    combined_results_filtered <- combined_results %>%
+      filter(abs(Correlation) >= corr_cutoff)
+
+    if (filter_by == "p_value") {
+      combined_results_filtered <- combined_results_filtered %>%
+        filter(P_value <= p_value_cutoff)
+      message("   Filtered by p-value <= ", p_value_cutoff)
+    } else if (filter_by == "q_value") {
+      # Calculate Q-values
+      combined_results_filtered$Q_value <- stats::p.adjust(combined_results_filtered$P_value, method = q_adjust_method)
+      combined_results_filtered <- combined_results_filtered %>%
+        filter(Q_value <= q_value_cutoff)
+      message("   Filtered by q-value <= ", q_value_cutoff, " (", q_adjust_method, " correction)")
+    }
+
+    if (nrow(combined_results_filtered) == 0) {
+      message("   No significant correlations found after filtering for group '", current_group, "'. Skipping output for this group.")
+      next
+    }
+
+    combined_results_filtered$Group <- current_group
+    all_correlation_results[[current_group]] <- combined_results_filtered
+
+    # Save results for the current group
+    output_filename <- paste0("pathway_metabolite_network_", current_group, ".csv")
+    output_filepath <- file.path(output_file, output_filename)
+    write.csv(combined_results_filtered, output_filepath, row.names = FALSE)
+    message("   Saved results for group '", current_group, "' to: ", output_filepath)
+  }
+  message("Pathway-metabolite network construction complete.")
+}
+
+# Example usage:
+construct_pathway_metabolite_network(
+  pathway_abundance_file = "path_abun_unstrat.csv", 
+  metabolite_concentration_file = "metabolite_concentration.csv", 
+  output_file = "pathway_metabolite_network_results", # Output directory for results
+  metadata_file = "sample_metadata.csv", # Optional, set to NULL if no groups
+  correlation_method = "pearson", # Choose "spearman" or "pearson"
+  filter_by = "none", # Choose "none", "p_value", or "q_value"
+  corr_cutoff = 0.5, # Absolute correlation coefficient cutoff (e.g., 0.5)
+  p_value_cutoff = NULL, # Set if filter_by = "p_value"
+  q_value_cutoff = NULL, # Set if filter_by = "q_value"
+  q_adjust_method = "fdr" # Choose "bonferroni" or "fdr" if filter_by = "q_value"
+)
+```
+#### **Example output**
+
+The function creates an output directory (e.g., `pathway_metabolite_network_results`) containing `.csv` files for each group analyzed (e.g., `pathway_metabolite_network_G1.csv`, `pathway_metabolite_network_G2.csv`, or `pathway_metabolite_network_overall.csv` if no groups are defined).
+
+Each output file is a table representing the pathway-metabolite network edges for that specific group.
+
+**Example table: `pathway_metabolite_network_G1.csv`**
+
+| FunctionID | MetaboliteID | Correlation | P_value | Q_value | Group |
+|:-----------|:-------------|:------------|:--------|:--------|:------|
+| ko00010    | M_glucose    | 0.82        | 0.001   | 0.005   | G1  |
+| ko00020    | M_amino_acid | -0.75       | 0.003   | 0.008   | G1  |
+| ko00300    | M_lipid      | 0.68        | 0.01    | 0.02    | G1  |
+| ko00400    | M_vitB       | -0.62       | 0.025   | 0.04    | G1  |
+
+Each row represents a correlation (edge) between a pathway (`FunctionID`) and a metabolite (`MetaboliteID`).
+- `Correlation`: The correlation coefficient (Spearman or Pearson) indicating the strength and direction of the relationship.
+- `P_value`: The raw p-value for the correlation.
+- `Q_value`: The adjusted p-value (q-value), if q-value filtering was selected.
+- `Group`: The specific group for which the correlation was calculated.
 
 ### <ins>Multi-layered network</ins>
 
