@@ -390,6 +390,9 @@ The pathway–pathway network is constructed using pathways identified as signif
 | `sample_metadata.csv`       | Sample metadata with group or condition information.                        | `SampleID`, `class`                                        |
 | `pathway_gene_map.csv`      | Maps pathway IDs to their associated gene/KO IDs.                           | **First column**: pathway IDs; **Other columns**: gene/KO IDs |
 
+<details>
+<summary>Click to show the full R function</summary>
+
 ```r
 library(DESeq2)
 library(clusterProfiler)
@@ -654,6 +657,8 @@ construct_pathway_pathway_network <- function(
 }
 ```
 
+</details>
+
 #### **Example usage**
 
 ```r
@@ -703,6 +708,9 @@ The pathway–metabolite network is constructed by calculating pairwise correlat
 | `path_abun_unstrat.csv`      | Pathway abundance data. Values will be converted to relative abundance within the function.                                                               | `SampleID`, `Function IDs`        |
 | `metabolite_concentration.csv` | Metabolite concentration data.                                                                                                                          | `SampleID`, Metabolite names (as columns) |
 | `sample_metadata.csv`        | (Optional) Sample metadata with group or condition information. If not provided or `class` column is missing, correlations will be performed on the overall dataset. | `SampleID`, `class`               |
+
+<details>
+<summary>Click to show the full R function</summary>
 
 ```r
 library(dplyr)
@@ -933,6 +941,8 @@ construct_pathway_metabolite_network <- function(
 }
 ```
 
+</details>
+
 #### **Example usage**
 
 ```r
@@ -982,6 +992,9 @@ These networks are finally integrated through connected pathway nodes to constru
 | `pathway_jaccard_*.csv` | Pathway-pathway network table. | `FunctionID_1`, `FunctionID_2`, `jaccard_index` |
 | `pathway_metabolite_network_*.csv` | Pathway-metabolite network table. | `FunctionID`, `MetaboliteID`, `Correlation` |
 | `gsea_results_*.csv` | GSEA results containing identified pathways. | `ID` (pathway ID) |
+
+<details>
+<summary>Click to show the full R function</summary>
 
 ```r
 library(dplyr)
@@ -1161,6 +1174,8 @@ construct_multi_layered_network <- function(
 }
 ```
 
+</details>
+
 #### **Example usage**
 
 ```r
@@ -1224,6 +1239,9 @@ The node prioritization uses the Laplacian Heat Diffusion (LHD) algorithm to ide
 | File | Description | Required columns |
 | :------------- | :---------- | :--------------- |
 | `multi_layered_network_*.csv` | Multi-layered network table. | `Feature1`, `Feature2`, `Edge_Score`, `Edge_Type` |
+
+<details>
+<summary>Click to show the full R function</summary>
 
 ```r
 library(igraph)   
@@ -1514,6 +1532,8 @@ node_prioritization(
   filter_other_metabolite_edges = TRUE 
 )
 ```
+
+</details>
 
 #### **Example output**
 
