@@ -1537,7 +1537,7 @@ node_prioritization(
 
 #### **Example output**
 
-The `node_prioritization` function generates multiple output files for each metabolite seed in the specified `output_directory`:
+The `node_prioritization` function generates multiple output files for each diffusion set in the specified `output_directory`:
 
 1.  **`heat_scores_*.csv`**: A CSV file containing the final heat scores for all nodes that participated in the diffusion from that specific metabolite seed, sorted by `Heat_Score` in descending order.
 2.  **`spearman_correlations_*.csv`**: A CSV file detailing the Spearman correlations between heat vectors at consecutive time steps, used for stabilization assessment.
