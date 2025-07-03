@@ -966,8 +966,8 @@ construct_pathway_metabolite_network(
   metabolite_concentration_file = "metabolite_concentration.csv", 
   output_file = "pathway_metabolite_network_results", # Output directory for results
   metadata_file = "sample_metadata.csv", # Optional, set to NULL if no groups
-  correlation_method = "pearson", # Choose "spearman" or "pearson"
-  filter_by = "none", # Choose "none", "p_value", or "q_value"
+  correlation_method = "pearson", # User can choose from "spearman" or "pearson"
+  filter_by = "none", # User can choose from "none", "p_value", or "q_value"
   corr_cutoff = 0.5, # Absolute correlation coefficient cutoff (e.g., 0.5)
   p_value_cutoff = NULL, # Set if filter_by = "p_value"
   q_value_cutoff = NULL, # Set if filter_by = "q_value"
