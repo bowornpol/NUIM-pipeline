@@ -1201,6 +1201,14 @@ Each row represents a connection between two features (`Feature1`, `Feature2`). 
 
 This module provides three network analyses designed to identify context-specific associations:
 
-- The hub identification uses the Maximal Clique Centrality (MCC) algorithm to identify key microbial pathways.  
-- The pathfinding uses the Dijkstra's algorithm to identify the shortest path between the selected source and target nodes.  
-- The node prioritization uses the Laplacian Heat Diffusion (LHD) algorithm to identify microbe-associated metabolites.
+### <ins>(1) Hub identification</ins>
+
+The hub identification uses the Maximal Clique Centrality (MCC) algorithm to identify key microbial pathways.  
+
+### <ins>(2) Pathfinding</ins>
+
+The pathfinding uses the Dijkstra's algorithm to identify the shortest path between the selected source and target nodes.
+
+### <ins>(2) Node prioritization</ins>
+
+The node prioritization uses the Laplacian Heat Diffusion (LHD) algorithm to identify microbe-associated metabolites.
