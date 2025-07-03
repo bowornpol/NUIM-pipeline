@@ -197,7 +197,7 @@ The microbe–pathway network is constructed from pathway contribution data, wit
 | `taxonomy.csv`          | Taxonomy annotations mapping `FeatureID` to taxonomic name from QIIME2.                                                                               | `FeatureID`, `TaxonID`                         |
 
 <details>
-<summary>Click to show the full R function</summary>
+<summary><span style="color:red; font-weight:bold">Click to show the full R function</span></summary>
 
 ```r
 library(dplyr)
