@@ -968,11 +968,11 @@ The function creates an output directory (e.g., `pathway_metabolite_network_resu
 
 | FunctionID | MetaboliteID | Correlation | P_value | Q_value | Group |
 |:-----------|:-------------|:------------|:--------|:--------|:------|
-| ko00010    | acetate    | 0.82        | 0.001   | 0.005   | G2    |
-| ko00020    | butyrate | -0.75       | 0.003   | 0.008   | G2    |
-| ko00300    | propionate      | 0.68        | 0.015    | 0.023    | G2    |
-| ko00400    | lactate       | -0.62       | 0.025   | 0.041    | G2    |
-| ...        | ...          | ...         | ...     | ...     | ...   |
+| ko00010    | acetate       | 0.82        | 0.001   | 0.005   | G2    |
+| ko00020    | butyrate      | -0.75       | 0.003   | 0.008   | G2    |
+| ko00300    | propionate    | 0.68        | 0.015   | 0.023   | G2    |
+| ko00400    | lactate       | -0.62       | 0.025   | 0.041   | G2    |
+| ...        | ...           | ...         | ...     | ...     | ...   |
 
 Each row represents a correlation (edge) between a pathway (`FunctionID`) and a metabolite (`MetaboliteID`).
 - `Correlation`: The correlation coefficient (Spearman or Pearson) indicating the strength and direction of the relationship.
