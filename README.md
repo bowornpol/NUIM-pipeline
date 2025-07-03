@@ -128,7 +128,7 @@ PICRUSt2 predicts functional profiles from 16S rRNA data. This step uses a featu
 |---------------------|---------------------------------|
 | `feature-table.biom` | Feature table exported from QIIME2. |
 | `rep_seqs.fasta`    | Representative sequences exported from QIIME2. |
-| `pathway_gene_map.tsv` | Maps pathway IDs to their associated gene/KO IDs. **First Column:** pathway IDs; **Other Columns:** gene/KO IDs |
+| `pathway_gene_map.tsv` | Maps pathway IDs to their associated gene/KO IDs. **First column**: pathway IDs; **Other columns**: gene/KO IDs |
 
 <p align="center">
   <img src="figures/PICRUSt2_overview.png" width="700"/>
@@ -358,7 +358,7 @@ construct_microbe_pathway_network(
 
 #### **Example output**
 
-The function generates a directory (e.g., `microbe_pathway_network_results`), which contains output files specific to the group analyzed and the filtering method applied (e.g., `microbe_pathway_network_G2_median.csv`).
+The function generates a directory (e.g., `microbe_pathway_network_results`), which contains output files specific to the group analyzed and the filtering method applied (e.g., `microbe_pathway_network_*.csv`).
 
 **Example table: `microbe_pathway_network_G2_median.csv`**
 
@@ -384,7 +384,7 @@ The pathway–pathway network is constructed using pathways identified as signif
 | :-------------------------- | :-------------------------------------------------------------------------- | :--------------------------------------------------------- |
 | `pred_metagenome_unstrat.csv` | Gene abundance data from PICRUSt2.                                          | `SampleID`, Gene/KO IDs (as columns)                       |
 | `sample_metadata.csv`       | Sample metadata with group or condition information.                        | `SampleID`, `class`                                        |
-| `pathway_gene_map.csv`      | Maps pathway IDs to their associated gene/KO IDs.                           | **First Column:** pathway IDs; **Other Columns:** gene/KO IDs |
+| `pathway_gene_map.csv`      | Maps pathway IDs to their associated gene/KO IDs.                           | **First column**: pathway IDs; **Other columns**: gene/KO IDs |
 
 ```r
 library(DESeq2)
@@ -670,9 +670,9 @@ The function creates an output directory (e.g., `pathway_pathway_network_results
 
 For each comparison, two types of files are generated:
 
-1.  **`gsea_results_[group1]_vs_[group2].csv`**: Contains detailed Gene Set Enrichment Analysis (GSEA) results for pathways. Each row describes an enriched pathway, including its ID, description, enrichment score (NES), and adjusted p-value (`p.adjust`). The `core_enrichment` column lists the key genes driving the enrichment.
+1.  **`gsea_results_*.csv`**: Contains detailed Gene Set Enrichment Analysis (GSEA) results for pathways. Each row describes an enriched pathway, including its ID, description, enrichment score (NES), and adjusted p-value (`p.adjust`). The `core_enrichment` column lists the key genes driving the enrichment.
 
-2.  **`pathway_jaccard_[group1]_vs_[group2].csv`**: Quantifies the similarity between *significant* pathways based on shared "core enriched" genes using the Jaccard index. This table defines the edges of the pathway-pathway network.
+2.  **`pathway_jaccard_*.csv`**: Quantifies the similarity between *significant* pathways based on shared "core enriched" genes using the Jaccard index. This table defines the edges of the pathway-pathway network.
 
 **Example table: `pathway_jaccard_G1_vs_G2.csv`**
 
@@ -948,7 +948,7 @@ construct_pathway_metabolite_network(
 
 #### **Example output**
 
-The function creates an output directory (e.g., `pathway_metabolite_network_results`) containing `.csv` files for each group analyzed (e.g., `pathway_metabolite_network_G1.csv`, `pathway_metabolite_network_G2.csv`, or `pathway_metabolite_network_overall.csv` if no groups are defined).
+The function creates an output directory (e.g., `pathway_metabolite_network_results`) containing `.csv` files for each group analyzed (e.g., `pathway_metabolite_network_*.csv` or `pathway_metabolite_network_overall.csv` if no groups are defined).
 
 **Example table: `pathway_metabolite_network_G2.csv`**
 
@@ -956,8 +956,8 @@ The function creates an output directory (e.g., `pathway_metabolite_network_resu
 |:-----------|:-------------|:------------|:--------|:--------|:------|
 | ko00010    | M_glucose    | 0.82        | 0.001   | 0.005   | G2    |
 | ko00020    | M_amino_acid | -0.75       | 0.003   | 0.008   | G2    |
-| ko00300    | M_lipid      | 0.68        | 0.01    | 0.02    | G2    |
-| ko00400    | M_vitB       | -0.62       | 0.025   | 0.04    | G2    |
+| ko00300    | M_lipid      | 0.68        | 0.015    | 0.023    | G2    |
+| ko00400    | M_vitB       | -0.62       | 0.025   | 0.041    | G2    |
 | ...        | ...          | ...         | ...     | ...     | ...   |
 
 Each row represents a correlation (edge) between a pathway (`FunctionID`) and a metabolite (`MetaboliteID`).
@@ -974,10 +974,10 @@ These networks are finally integrated through connected pathway nodes to constru
 
 | File | Description | Required columns |
 | :------------- | :---------- | :--------------- |
-| `microbe_pathway_file` | Microbe-pathway network table. | `TaxonID`, `FunctionID`, `relative_contribution` |
-| `pathway_jaccard_file` | Pathway-pathway network table. | `FunctionID_1`, `FunctionID_2`, `jaccard_index` |
-| `pathway_metabolite_file` | Pathway-metabolite network table. | `FunctionID`, `MetaboliteID`, `Correlation` |
-| `gsea_results_file` | GSEA results containing identified pathways. | `ID` (pathway ID) |
+| `microbe_pathway_network_*.csv` | Microbe-pathway network table. | `TaxonID`, `FunctionID`, `relative_contribution` |
+| `pathway_jaccard_*.csv` | Pathway-pathway network table. | `FunctionID_1`, `FunctionID_2`, `jaccard_index` |
+| `pathway_metabolite_network_*.csv` | Pathway-metabolite network table. | `FunctionID`, `MetaboliteID`, `Correlation` |
+| `gsea_results_*.csv` | GSEA results containing identified pathways. | `ID` (pathway ID) |
 
 ```
 library(dplyr)
@@ -1181,7 +1181,7 @@ construct_multi_layered_network(
 
 #### **Example output**
 
-The `construct_multi_layered_network` function generates a single CSV file at the specified `output_file` path (e.g., `results/multi_layered_network.csv`). This file integrates all specified network layers, filtered to include only edges connected to GSEA-identified pathways, and presented in a standardized format.
+The `construct_multi_layered_network` function generates a single CSV file at the specified `output_file` path (e.g., `multi_layered_network_results/multi_layered_network_*.csv`). This file integrates all specified network layers, filtered to include only edges connected to GSEA-identified pathways, and presented in a standardized format.
 
 **Example table: `multi_layered_network_G2.csv`**
 
@@ -1195,7 +1195,9 @@ The `construct_multi_layered_network` function generates a single CSV file at th
 | ko00030       | M_acetate     | 0.55            | Pathway-Metabolite  |
 | ...           | ...           | ...             | ...                 |
 
-Each row represents a connection between two features (`Feature1`, `Feature2`). The `Edge_Score` quantifies the strength or value of this connection, and `Edge_Type` indicates the original network layer it came from.
+Each row represents a connection between two features (`Feature1`, `Feature2`).
+- `Edge_Score`: Quantifies the strength or value of this connection between `Feature1` and `Feature2`.
+- `Edge_Type`: Indicates the original network layer from which the connection originated.
 
 ## Module 3: Network Analysis
 
@@ -1209,6 +1211,325 @@ The hub identification uses the Maximal Clique Centrality (MCC) algorithm to ide
 
 The pathfinding uses the Dijkstra's algorithm to identify the shortest path between the selected source and target nodes.
 
-### <ins>(2) Node prioritization</ins>
+### <ins>(3) Node prioritization</ins>
 
 The node prioritization uses the Laplacian Heat Diffusion (LHD) algorithm to identify microbe-associated metabolites.
+
+### **Required inputs**
+
+| File | Description | Required columns |
+| :------------- | :---------- | :--------------- |
+| `multi_layered_network_*.csv` | Multi-layered network table. | `Feature1`, `Feature2`, `Edge_Score`, `Edge_Type` |
+
+```
+library(igraph)   
+library(expm)     
+library(dplyr)    
+library(ggplot2)  
+
+node_prioritization <- function(
+  multi_layered_network_file,
+  output_directory,
+  time_step_interval = 0.01,
+  stabilization_threshold = 0.0001,
+  stabilization_window_size = 10,
+  filter_other_metabolite_edges
+) {
+  message("Starting metabolite-seeded heat diffusion for node prioritization.")
+  if (filter_other_metabolite_edges) {
+    message("WARNING: 'filter_other_metabolite_edges' is set to TRUE. This will modify the network structure for each seed by EXCLUDING ALL OTHER METABOLITE NODES AND THEIR CONNECTED EDGES. This significantly changes the nature of the diffusion and its interpretation. ONLY THE SEED METABOLITE AND NON-METABOLITE NODES WILL BE INCLUDED IN THE OUTPUT FILE FOR EACH DIFFUSION.")
+  }
+  
+  # Ensure output directory exists
+  if (!dir.exists(output_directory)) {
+    dir.create(output_directory, recursive = TRUE)
+    message("Created output directory: ", output_directory)
+  } else {
+    message("Output directory already exists: ", output_directory)
+  }
+  
+  # 1. Load the multi-layered network file (FULL network data)
+  message("\n1. Loading multi-layered network from: ", multi_layered_network_file)
+  if (!file.exists(multi_layered_network_file)) {
+    stop("Input network file not found: '", multi_layered_network_file, "'. Cannot proceed.")
+  }
+  
+  combined_data_full <- tryCatch( # Renamed to combined_data_full to denote original data
+    read.csv(multi_layered_network_file, stringsAsFactors = FALSE),
+    error = function(e) {
+      stop(paste("Error reading multi-layered network file '", multi_layered_network_file, "': ", e$message, sep = ""))
+    }
+  )
+  
+  # Validate required columns in combined_data_full
+  required_cols_network <- c("Feature1", "Feature2", "Edge_Score", "Edge_Type")
+  if (!all(required_cols_network %in% colnames(combined_data_full))) {
+    stop(paste("Input network file '", multi_layered_network_file, "' must contain columns: ", paste(required_cols_network, collapse = ", "), ". Please ensure it's the output from Module 2, Step 4.", sep = ""))
+  }
+  
+  # Ensure Edge_Score is numeric
+  if (!is.numeric(combined_data_full$Edge_Score)) {
+    stop("Column 'Edge_Score' in the input network file must be numeric.")
+  }
+  
+  # 2. Identify all unique metabolite nodes from the FULL network (for looping and for filtering)
+  all_metabolite_nodes <- combined_data_full %>%
+    filter(Edge_Type == "Pathway-Metabolite") %>%
+    pull(Feature2) %>%
+    unique() %>%
+    as.character()
+  
+  if (length(all_metabolite_nodes) == 0) {
+    stop("No metabolite nodes found in the network (based on 'Pathway-Metabolite' Edge_Type). Cannot proceed with metabolite-seeded diffusion.")
+  }
+  message("Identified ", length(all_metabolite_nodes), " unique metabolite nodes for seeding and potential filtering.")
+  
+  # Define the function for heat vector at time t
+  H_vector_func <- function(t_val, laplacian_matrix, initial_heat_vector) {
+    # Ensure dimensions match before multiplication
+    if (nrow(laplacian_matrix) != length(initial_heat_vector)) {
+      stop("Dimension mismatch: Laplacian matrix rows (", nrow(laplacian_matrix), ") and initial heat vector length (", length(initial_heat_vector), ") do not match.")
+    }
+    expm(-laplacian_matrix * t_val) %*% initial_heat_vector
+  }
+  
+  # Function to find stabilization time and return correlations
+  find_stabilization_data <- function(current_L, current_H0, time_interval, threshold, window_size) {
+    time_steps_local <- seq(0, 1, by = time_interval)
+    
+    heat_vectors_over_time <- sapply(time_steps_local, function(t) {
+      H_vector_func(t, current_L, current_H0)
+    })
+    
+    if (ncol(heat_vectors_over_time) < 2) {
+      # If only one time step or no progression, return empty correlations and last time step
+      return(list(stabilization_time = time_steps_local[length(time_steps_local)], correlations_df = data.frame(Time = numeric(), Correlation = numeric())))
+    }
+    
+    correlations <- numeric(ncol(heat_vectors_over_time) - 1)
+    
+    for (i in seq_along(correlations)) {
+      H_current <- heat_vectors_over_time[, i + 1]
+      H_prev <- heat_vectors_over_time[, i]
+      correlations[i] <- ifelse(sd(H_current) == 0 || sd(H_prev) == 0, 1, cor(H_current, H_prev, method = "spearman", use = "complete.obs"))
+    }
+    
+    correlation_df <- data.frame(Time = time_steps_local[-1], Correlation = correlations) # Time corresponds to the later time point of the pair
+    
+    stabilization_t_found <- time_steps_local[length(correlations) + 1] # Default to last time if no stabilization
+    
+    # Ensure window_size is not larger than available correlations
+    if (window_size >= length(correlations)) {
+      stabilization_t_found <- time_steps_local[length(correlations) + 1]
+    } else {
+      for (i in seq(length(correlations) - window_size + 1)) {
+        diffs <- abs(diff(correlations[i:(i + window_size - 1)]))
+        if (all(diffs < threshold)) {
+          stabilization_t_found <- time_steps_local[i+1] # Time at the start of the stabilization *window* of the second vector in the pair.
+          break
+        }
+      }
+    }
+    
+    return(list(stabilization_time = stabilization_t_found, correlations_df = correlation_df))
+  }
+  
+  # 3. Loop through each metabolite node to perform heat diffusion
+  message("\nPerforming heat diffusion for each metabolite seed node...")
+  for (seed_metabolite_id in all_metabolite_nodes) { # Loop through all identified metabolites as seeds
+    message("  Processing seed metabolite: '", seed_metabolite_id, "'")
+    
+    # --- Determine network for current seed based on filter_other_metabolite_edges ---
+    if (filter_other_metabolite_edges) {
+      message("    Applying aggressive filtering: Excluding all nodes that are metabolites EXCEPT the current seed ('", seed_metabolite_id, "') and their connected edges.")
+      
+      # Identify all other metabolite nodes to exclude (all metabolites MINUS the current seed)
+      other_metabolite_nodes_to_exclude <- setdiff(all_metabolite_nodes, seed_metabolite_id)
+      
+      # Filter edges: keep only edges where *neither* Feature1 nor Feature2 is one of the 'other metabolite' nodes
+      current_combined_data <- combined_data_full %>%
+        filter(
+          !(Feature1 %in% other_metabolite_nodes_to_exclude) &
+            !(Feature2 %in% other_metabolite_nodes_to_exclude)
+        )
+      
+      # Check if the seed node itself is still present after aggressive filtering (should be, but good to check)
+      if (!seed_metabolite_id %in% unique(c(current_combined_data$Feature1, current_combined_data$Feature2))) {
+        warning("  Seed metabolite '", seed_metabolite_id, "' is not present in the graph after aggressive filtering. This implies it was only connected to other metabolites, which were removed. Skipping diffusion for this seed.")
+        next
+      }
+      
+    } else {
+      # Use the full network data (original behavior)
+      current_combined_data <- combined_data_full
+      message("    Using the full network for diffusion.")
+    }
+    
+    # --- Convert Edge_Score to absolute value ---
+    current_combined_data$Edge_Score <- abs(current_combined_data$Edge_Score)
+    message("    Edge_Scores converted to absolute values.")
+    
+    # --- Create graph and Laplacian matrix for the CURRENT network configuration ---
+    # This block is now inside the loop, as the network structure changes per seed if filtered
+    
+    # Check for valid edges/nodes to create a graph
+    if (nrow(current_combined_data) == 0) {
+      warning("  No edges found for graph construction for seed '", seed_metabolite_id, "' after filtering. Skipping diffusion.")
+      next
+    }
+    
+    # Get all unique nodes from the current filtered data to ensure the graph includes them
+    all_nodes_in_current_data <- unique(c(current_combined_data$Feature1, current_combined_data$Feature2))
+    
+    g_current <- graph_from_data_frame(d = current_combined_data[, c("Feature1", "Feature2")], directed = FALSE,
+                                       vertices = all_nodes_in_current_data) # Explicitly define vertices
+    
+    # Assign weights (handling potential mismatches as before)
+    graph_edges_for_weighting <- as_data_frame(g_current, what = "edges") %>%
+      rowwise() %>%
+      mutate(Node_A = min(from, to), Node_B = max(from, to)) %>%
+      ungroup()
+    
+    current_combined_data_sorted <- current_combined_data %>%
+      rowwise() %>%
+      mutate(Node_A = min(Feature1, Feature2), Node_B = max(Feature1, Feature2)) %>%
+      ungroup() %>%
+      select(Node_A, Node_B, Edge_Score) %>%
+      distinct()
+    
+    weighted_edges_df <- graph_edges_for_weighting %>%
+      left_join(current_combined_data_sorted, by = c("Node_A", "Node_B")) %>%
+      select(from, to, Edge_Score)
+    
+    E(g_current)$weight <- weighted_edges_df$Edge_Score[match(paste0(graph_edges_for_weighting$from, graph_edges_for_weighting$to),
+                                                              paste0(weighted_edges_df$from, weighted_edges_df$to))]
+    
+    if (any(is.na(E(g_current)$weight))) {
+      warning("  Some edges in the graph for seed '", seed_metabolite_id, "' could not be matched to an 'Edge_Score' in the input data. Assigning 0 weight to unmatched edges.")
+      E(g_current)$weight[is.na(E(g_current)$weight)] <- 0
+    }
+    
+    # If the graph has become too small (e.g., only 1 node, no edges, or disconnected)
+    if (vcount(g_current) < 2 || ecount(g_current) == 0 || !is.connected(g_current)) {
+      warning("  Graph for seed '", seed_metabolite_id, "' is too sparse, disconnected, or lacks sufficient nodes/edges after filtering (nodes: ", vcount(g_current), ", edges: ", ecount(g_current), ", connected: ", is.connected(g_current), "). Skipping diffusion for this seed as Laplacian cannot be computed meaningfully.")
+      next
+    }
+    
+    L_current <- laplacian_matrix(g_current, weights = E(g_current)$weight)
+    L_current <- as.matrix(L_current)
+    
+    # Initialize the heat vector H_0 for the current seed within the CURRENT graph's nodes
+    H_0_current_graph <- numeric(vcount(g_current))
+    names(H_0_current_graph) <- V(g_current)$name
+    seed_index_current_graph <- which(V(g_current)$name == seed_metabolite_id)
+    
+    if (length(seed_index_current_graph) == 0) {
+      warning("  Seed metabolite '", seed_metabolite_id, "' not found in the *filtered* graph's node set. This should not happen if previous checks are correct. Skipping diffusion.")
+      next
+    }
+    H_0_current_graph[seed_index_current_graph] <- 1.0
+    
+    # Find stabilization time and get correlations data
+    stabilization_data_result <- find_stabilization_data(L_current, H_0_current_graph, time_step_interval, stabilization_threshold, stabilization_window_size)
+    stabilization_t <- stabilization_data_result$stabilization_time
+    correlation_df <- stabilization_data_result$correlations_df
+    
+    message("    Stabilization time for '", seed_metabolite_id, "': t = ", round(stabilization_t, 4))
+    
+    # Calculate final heat scores at stabilization time
+    final_heat_scores <- H_vector_func(stabilization_t, L_current, H_0_current_graph)
+    
+    # Create output data frame for this metabolite
+    # IMPORTANT FIX: Now, only nodes present in the *current filtered graph* will be in the output.
+    # Other metabolites (which were excluded from the diffusion) will NOT be present in this output.
+    output_df <- data.frame(
+      Node = V(g_current)$name, # Nodes from the current filtered graph
+      Heat_Score = round(final_heat_scores, 10),
+      stringsAsFactors = FALSE
+    ) %>%
+      arrange(desc(Heat_Score)) # Sort by heat score (descending)
+    
+    # Save heat scores to CSV
+    output_file_name_heat <- paste0("heat_scores_", gsub("\\.", "_", seed_metabolite_id), ifelse(filter_other_metabolite_edges, "_filtered_metabolite_nodes", ""), ".csv")
+    output_path_heat <- file.path(output_directory, output_file_name_heat)
+    write.csv(output_df, file = output_path_heat, row.names = FALSE) # Directly write output_df
+    message("    Saved heat scores for '", seed_metabolite_id, "' to: ", output_path_heat)
+    
+    # Save correlation data to CSV
+    output_file_name_correlation_csv <- paste0("spearman_correlations_", gsub("\\.", "_", seed_metabolite_id), ifelse(filter_other_metabolite_edges, "_filtered_metabolite_nodes", ""), ".csv")
+    output_path_correlation_csv <- file.path(output_directory, output_file_name_correlation_csv)
+    write.csv(correlation_df, file = output_path_correlation_csv, row.names = FALSE)
+    message("    Saved Spearman correlation data for '", seed_metabolite_id, "' to: ", output_path_correlation_csv)
+    
+    # Generate and save correlation plot
+    correlation_plot <- ggplot(correlation_df, aes(x = Time, y = Correlation)) + 
+      geom_line() +
+      geom_vline(xintercept = stabilization_t, linetype = "dashed", color = "#a62140") + 
+      geom_text(
+        aes(
+          x = stabilization_t, 
+          y = max(Correlation, na.rm = TRUE) * 0.5, # Position text dynamically
+          label = paste("t =", round(stabilization_t, 4))
+        ),
+        color = "#a62140", hjust = -0.1, vjust = 0.5, size = 5, fontface = "bold"
+      ) +
+      xlab("Time step") + 
+      ylab("Spearman correlation with previous time step") + 
+      scale_x_continuous(breaks = seq(0, 1, by = 0.1)) + 
+      theme_minimal() +
+      theme(
+        plot.title = element_text(face = "bold", hjust = 0.5),
+        panel.border = element_rect(color = "black", fill = NA, size = 1)
+      )
+    
+    output_file_name_plot <- paste0("correlation_plot_", gsub("\\.", "_", seed_metabolite_id), ifelse(filter_other_metabolite_edges, "_filtered_metabolite_nodes", ""), ".jpg")
+    output_path_plot <- file.path(output_directory, output_file_name_plot)
+    ggsave(output_path_plot, plot = correlation_plot, width = 8, height = 5, dpi = 600)
+    message("    Saved correlation plot for '", seed_metabolite_id, "' to: ", output_path_plot)
+  }
+}
+```
+
+#### **Example usage**
+
+```
+# Define the full path and filename for your input CSV file
+my_multi_layered_network_file <- "multi_layered_network_results/multi_layered_network.csv"
+
+# Define the full path for your output directory
+my_output_directory <- "node_prioritization_results"
+
+# Call the function with your specific file paths
+node_prioritization(
+  multi_layered_network_file = my_multi_layered_network_file,
+  output_directory = my_output_directory,
+  # Set to TRUE to exclude other metabolite nodes from the diffusion network for each seed.
+  # Set to FALSE to include all nodes in the diffusion network.
+  filter_other_metabolite_edges = TRUE 
+)
+```
+
+#### **Example output**
+
+#### **Example output**
+
+The `node_prioritization` function generates multiple output files for each metabolite seed in the specified `output_directory`:
+
+1.  **`heat_scores_*.csv`**: A CSV file containing the final heat scores for all nodes that participated in the diffusion from that specific metabolite seed, sorted by `Heat_Score` in descending order.
+2.  **`spearman_correlations_*.csv`**: A CSV file detailing the Spearman correlations between heat vectors at consecutive time steps, used for stabilization assessment.
+3.  **`correlation_plot_*.jpg`**: A JPEG image visualizing the Spearman correlations over time, with the identified stabilization time marked.
+
+**Example table: `heat_scores_M_acetate_filtered_metabolite_nodes.csv` (when `filter_other_metabolite_edges = TRUE`)**
+
+| Node | Heat_Score |
+| :------------- | :---------- |
+| M_acetate | 0.480 |
+| ko00010 | 0.123 |
+| g__Blautia | 0.106 |
+| ko00400 | 0.088 |
+| g__Bifidobacterium | 0.023 |
+| ... | ... |
+
+Each row in the `heat_scores_*.csv` file represents a node in the diffusion network and its calculated heat score.
+- `Node`: The identifier for a node in the network (e.g., microbe, pathway, metabolite).
+- `Heat_Score`: The calculated heat score for that node at the diffusion stabilization time,indicating its importance relative to the seed node.
