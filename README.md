@@ -346,7 +346,7 @@ construct_microbe_pathway_network <- function(
 
 #### **Example usage**
 
-```
+```r
 construct_microbe_pathway_network(
   contrib_file = "path_abun_contrib.csv",      
   metadata_file = "sample_metadata.csv",      
@@ -652,7 +652,7 @@ construct_pathway_pathway_network <- function(
 
 #### **Example usage**
 
-```
+```r
 construct_pathway_pathway_network(
    abundance_file = "pred_metagenome_unstrat.csv", 
    metadata_file = "sample_metadata.csv",          
@@ -931,7 +931,7 @@ construct_pathway_metabolite_network <- function(
 
 #### **Example usage**
 
-```
+```r
 construct_pathway_metabolite_network(
   pathway_abundance_file = "path_abun_unstrat.csv", 
   metabolite_concentration_file = "metabolite_concentration.csv", 
@@ -979,7 +979,7 @@ These networks are finally integrated through connected pathway nodes to constru
 | `pathway_metabolite_network_*.csv` | Pathway-metabolite network table. | `FunctionID`, `MetaboliteID`, `Correlation` |
 | `gsea_results_*.csv` | GSEA results containing identified pathways. | `ID` (pathway ID) |
 
-```
+```r
 library(dplyr)
 library(tidyr)
 library(stringr)
@@ -1159,7 +1159,7 @@ construct_multi_layered_network <- function(
 
 #### **Example usage**
 
-```
+```r
 # Define the full path and filename for your input CSV file
 my_microbe_pathway_file <- "microbe_pathway_network_results/microbe_pathway_network_G2_median.csv"
 my_pathway_jaccard_file <- "pathway_pathway_network_results/pathway_jaccard_G1_vs_G2.csv"
@@ -1221,7 +1221,7 @@ The node prioritization uses the Laplacian Heat Diffusion (LHD) algorithm to ide
 | :------------- | :---------- | :--------------- |
 | `multi_layered_network_*.csv` | Multi-layered network table. | `Feature1`, `Feature2`, `Edge_Score`, `Edge_Type` |
 
-```
+```r
 library(igraph)   
 library(expm)     
 library(dplyr)    
@@ -1492,7 +1492,7 @@ node_prioritization <- function(
 
 #### **Example usage**
 
-```
+```r
 # Define the full path and filename for your input CSV file
 my_multi_layered_network_file <- "multi_layered_network_results/multi_layered_network.csv"
 
