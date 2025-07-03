@@ -128,7 +128,7 @@ PICRUSt2 predicts functional profiles from 16S rRNA data. This step uses a featu
 |---------------------|---------------------------------|
 | `feature-table.biom` | Feature table exported from QIIME2. |
 | `rep_seqs.fasta`    | Representative sequences exported from QIIME2. |
-| `pathway_gene_map.tsv` | Maps pathway IDs to their associated gene/KO IDs. **First column**: pathway IDs; **Other columns**: gene/KO IDs |
+| `pathway_gene_map.tsv` | Maps pathway IDs to their associated gene/KO IDs. **First column**: pathway IDs; **Other columns**: gene/KO IDs. |
 
 <p align="center">
   <img src="figures/PICRUSt2_overview.png" width="700"/>
@@ -369,8 +369,8 @@ The function generates a directory (e.g., `microbe_pathway_network_results`), wh
 | FunctionID | TaxonID            | total_abundance | total_abundance_all_taxa | relative_contribution | median_contribution |
 |:-----------|:-------------------|:----------------|:-------------------------|:----------------------|:--------------------|
 | ko00365    | g__Bilophila       | 44.5            | 44.5                     | 1.0                   | 1.0                 |
-| ko00571    | g__Bifidobacterium | 1073.7          | 1076.3                   | 0.998                 | 0.5                 |
-| ko00720    | g__Blautia         | 14084.3         | 16493.0                  | 0.854                 | 0.0055              |
+| ko00571    | g__Bifidobacterium | 1073.7          | 1076.3                   | 0.97                 | 0.5                 |
+| ko00720    | g__Blautia         | 14084.3         | 16493.0                  | 0.85                 | 0.05              |
 | ...        | ...                | ...             | ...                      | ...                   | ...                 |
 
 Each row represents a weighted edge linking a microbial taxon (`TaxonID`) to a functional pathway (`FunctionID`) with the strength of the edge defined by the `relative_contribution`.
