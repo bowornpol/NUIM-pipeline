@@ -196,6 +196,9 @@ The microbe–pathway network is constructed from pathway contribution data, wit
 | `sample_metadata.csv`   | Sample metadata. Required for group-specific analysis. If not provided or `class` column is missing, data will be processed as one 'overall' group. | `SampleID`, `class`                            |
 | `taxonomy.csv`          | Taxonomy annotations mapping `FeatureID` to taxonomic name from QIIME2.                                                                               | `FeatureID`, `TaxonID`                         |
 
+<details>
+<summary>Click to show the full R function</summary>
+
 ```r
 library(dplyr)
 
@@ -343,6 +346,7 @@ construct_microbe_pathway_network <- function(
   message("Microbe-pathway network construction complete.")
 }
 ```
+</details> 
 
 #### **Example usage**
 
