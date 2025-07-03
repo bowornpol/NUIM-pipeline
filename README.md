@@ -381,7 +381,6 @@ construct_microbe_pathway_network <- function(
     message("  Saved results for class '", current_class, "' to: ", full_output_path)
   }
   message("Microbe-pathway network construction complete.")
-  return(invisible(NULL))
 }
 
 # Example usage:
@@ -435,7 +434,7 @@ construct_pathway_pathway_network <- function(
   output_file,
   pvalueCutoff,
   pAdjustMethod = c("fdr", "holm", "hochberg", "hommel", "bonferroni", "BH", "BY", "none"),
-  rank_by = c("signed_log_pvalue", "log2FoldChange") 
+  rank_by = c("signed_log_pvalue", "log2FoldChange")
 ) {
   # Validate inputs
   pAdjustMethod <- match.arg(pAdjustMethod)
@@ -659,8 +658,8 @@ construct_pathway_pathway_network <- function(
           
           if (jaccard > 0) {
             res_list[[length(res_list) + 1]] <- data.frame(
-              pathway_1 = gsea_df_filtered$ID[i],
-              pathway_2 = gsea_df_filtered$ID[j],
+              FunctionID_1 = gsea_df_filtered$ID[i], # Renamed from pathway_1
+              FunctionID_2 = gsea_df_filtered$ID[j], # Renamed from pathway_2
               jaccard_index = jaccard,
               comparison = key,
               stringsAsFactors = FALSE
@@ -706,7 +705,7 @@ For each comparison, two types of files are generated:
 
 **Example table: `pathway_jaccard_G1_vs_G2.csv`**
 
-| pathway_1 | pathway_2 | jaccard_index | comparison |
+| FunctionID_1 | FunctionID_2 | jaccard_index | comparison |
 |:----------|:----------|:--------------|:-----------|
 | ko00500   | ko00230   | 0.02173913    | G1_vs_G2   |
 | ko00500   | ko00030   | 0.035714286   | G1_vs_G2   |
