@@ -705,7 +705,7 @@ The pathway–metabolite network is constructed by calculating pairwise correlat
 
 | File                         | Description                                                                                                                                           | Required columns                  |
 | :--------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------ | :-------------------------------- |
-| `path_abun_unstrat.csv`      | Pathway abundance data. Values will be converted to relative abundance within the function.                                                               | `SampleID`, `Function IDs`        |
+| `path_abun_unstrat.csv`      | Pathway abundance data. Values will be converted to relative abundance within the function.                                                               | `SampleID`, `FunctionID`        |
 | `metabolite_concentration.csv` | Metabolite concentration data.                                                                                                                          | `SampleID`, Metabolite names (as columns) |
 | `sample_metadata.csv`        | (Optional) Sample metadata with group or condition information. If not provided or `class` column is missing, correlations will be performed on the overall dataset. | `SampleID`, `class`               |
 
