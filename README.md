@@ -128,7 +128,7 @@ PICRUSt2 predicts functional profiles from 16S rRNA data. This step uses a featu
 |---------------------|---------------------------------|
 | `feature-table.biom` | Feature table exported from QIIME2. |
 | `rep_seqs.fasta`    | Representative sequences exported from QIIME2. |
-| `pathway_gene_map.tsv` | Maps pathway IDs to their associated gene/KO IDs. **First column:** pathway IDs; **other columns:** gene IDs. |
+| `pathway_gene_map.tsv` | Maps pathway IDs to their associated gene/KO IDs. **First Column:** pathway IDs; **Other Columns:** gene/KO IDs |
 
 <p align="center">
   <img src="figures/PICRUSt2_overview.png" width="700"/>
@@ -344,8 +344,9 @@ construct_microbe_pathway_network <- function(
 }
 ```
 
+### **Example usage**
+
 ```
-# Example usage:
 construct_microbe_pathway_network(
   contrib_file = "path_abun_contrib.csv",      
   metadata_file = "sample_metadata.csv",      
@@ -381,7 +382,7 @@ The pathway–pathway network is constructed using pathways identified as signif
 | :-------------------------- | :-------------------------------------------------------------------------- | :--------------------------------------------------------- |
 | `pred_metagenome_unstrat.csv` | Gene abundance data from PICRUSt2.                                          | `SampleID`, Gene/KO IDs (as columns)                       |
 | `sample_metadata.csv`       | Sample metadata with group or condition information.                        | `SampleID`, `class`                                        |
-| `pathway_gene_map.csv`      | Maps pathway IDs to their associated gene/KO IDs.                           | **First Column:** Pathway IDs; **Other Columns:** Gene/KO IDs |
+| `pathway_gene_map.csv`      | Maps pathway IDs to their associated gene/KO IDs.                           | **First Column:** pathway IDs; **Other Columns:** gene/KO IDs |
 
 ```r
 library(DESeq2)
@@ -647,8 +648,9 @@ construct_pathway_pathway_network <- function(
 }
 ```
 
+### **Example usage**
+
 ```
-# Example usage:
 construct_pathway_pathway_network(
    abundance_file = "pred_metagenome_unstrat.csv", 
    metadata_file = "sample_metadata.csv",          
@@ -691,7 +693,7 @@ The pathway–metabolite network is constructed by calculating pairwise correlat
 | File                         | Description                                                                                                                                           | Required columns                  |
 | :--------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------ | :-------------------------------- |
 | `path_abun_unstrat.csv`      | Pathway abundance data. Values will be converted to relative abundance within the function.                                                               | `SampleID`, `Function IDs`        |
-| `metabolite_concentration.csv` | Metabolite concentration data.                                                                                                                          | `SampleID`, Metabolite Names (as columns) |
+| `metabolite_concentration.csv` | Metabolite concentration data.                                                                                                                          | `SampleID`, Metabolite names (as columns) |
 | `sample_metadata.csv`        | (Optional) Sample metadata with group or condition information. If not provided or `class` column is missing, correlations will be performed on the overall dataset. | `SampleID`, `class`               |
 
 ```r
@@ -923,8 +925,9 @@ construct_pathway_metabolite_network <- function(
 }
 ```
 
+### **Example usage**
+
 ```
-# Example usage:
 construct_pathway_metabolite_network(
   pathway_abundance_file = "path_abun_unstrat.csv", 
   metabolite_concentration_file = "metabolite_concentration.csv", 
@@ -942,8 +945,6 @@ construct_pathway_metabolite_network(
 #### **Example output**
 
 The function creates an output directory (e.g., `pathway_metabolite_network_results`) containing `.csv` files for each group analyzed (e.g., `pathway_metabolite_network_G1.csv`, `pathway_metabolite_network_G2.csv`, or `pathway_metabolite_network_overall.csv` if no groups are defined).
-
-Each output file is a table representing the pathway-metabolite network edges for that specific group.
 
 **Example table: `pathway_metabolite_network_G2.csv`**
 
@@ -1152,9 +1153,9 @@ construct_multi_layered_network <- function(
 }
 ```
 
-```
-# Example usage:
+### **Example usage**
 
+```
 # Define the full path and filename for your input CSV file
 my_microbe_pathway_file <- "microbe_pathway_network_results/microbe_pathway_network_G2_median.csv"
 my_pathway_jaccard_file <- "pathway_pathway_network_results/pathway_jaccard_G1_vs_G2.csv"
@@ -1164,7 +1165,7 @@ my_gsea_file <- "pathway_pathway_network_results/gsea_results_G1_vs_G2.csv"
 # Define the full path and filename for your output CSV file
 my_output_file <- "multi_layered_network_results/multi_layered_network_G2.csv"
 
-# --- Call the function with your specific file paths ---
+# Call the function with your specific file paths 
 construct_multi_layered_network(
   microbe_pathway_file = my_microbe_pathway_file,
   pathway_jaccard_file = my_pathway_jaccard_file,
