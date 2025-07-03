@@ -719,7 +719,7 @@ For each comparison, two types of files are generated:
 
 Each row represents a connection between two pathways (`pathway_1`, `pathway_2`). The `jaccard_index` (0-1) indicates the degree of shared genes between them; a higher value means more overlap and a stronger functional relationship. 
 
-### <ins>Pathway–metabolite network construction</ins>
+### <ins>STEP 3: Pathway–metabolite network construction</ins>
 
 The pathway–metabolite network is constructed by calculating pairwise correlation (e.g., Spearman or Pearson) between pathway abundance and metabolite concentrations.  
 
