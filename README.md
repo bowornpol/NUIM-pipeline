@@ -1220,7 +1220,7 @@ Each row represents a connection between two features (`Feature1`, `Feature2`).
 
 ## Module 3: Network Analysis
 
-This module provides three network analyses designed to identify context-specific associations:
+This module provides three network analyses designed to identify context-specific associations. It takes the multi-layered network generated from the network construction module as input.
 
 ### <ins>(1) Hub identification</ins>
 
@@ -1229,6 +1229,149 @@ The hub identification uses the Maximal Clique Centrality (MCC) algorithm to ide
 ### <ins>(2) Pathfinding</ins>
 
 The pathfinding uses the Dijkstra's algorithm to identify the shortest path between the selected source and target nodes.
+
+#### **Required inputs**
+
+| File | Description | Required columns |
+| :------------- | :---------- | :--------------- |
+| `multi_layered_network_*.csv` | Multi-layered network table. | `Feature1`, `Feature2`, `Edge_Score`, `Edge_Type` |
+
+<details>
+<summary>Click to show the full R function</summary>
+
+```r
+library(igraph)
+library(dplyr)
+library(stringr)
+
+pathfinding <- function(
+  multi_layered_network_file,
+  source_node,
+  target_node,
+  output_directory
+) {
+  message("Starting shortest pathfinding using Dijkstra's algorithm.")
+  
+  if (!dir.exists(output_directory)) {
+    dir.create(output_directory, recursive = TRUE)
+    message("Created output directory: ", output_directory)
+  } else {
+    message("Output directory already exists: ", output_directory)
+  }
+  
+  # 1. Load network
+  message("\n1. Loading multi-layered network from: ", multi_layered_network_file)
+  
+  required_cols <- c("Feature1", "Feature2", "Edge_Score", "Edge_Type")
+  if (!file.exists(multi_layered_network_file)) {
+    stop("Network file not found: '", multi_layered_network_file, "'")
+  }
+  
+  network_data <- read.csv(multi_layered_network_file, stringsAsFactors = FALSE)
+  if (!all(required_cols %in% colnames(network_data))) {
+    stop("Network file must contain columns: ", paste(required_cols, collapse = ", "))
+  }
+  message("  Successfully loaded and validated network file.")
+  
+  if (!is.numeric(network_data$Edge_Score)) {
+    stop("Column 'Edge_Score' must be numeric.")
+  }
+  
+  # Convert Edge_Score to absolute
+  network_data$Edge_Score <- abs(network_data$Edge_Score)
+  
+  # 2. Create graph directly with edge attributes
+  message("  Creating graph and assigning weights.")
+  g <- graph_from_data_frame(d = network_data, directed = FALSE)
+  
+  # Apply weight transformation
+  E(g)$weight <- sapply(E(g)$Edge_Score, function(w) {
+    if (is.na(w)) {
+      Inf
+    } else if (w < 1) {
+      1 / w
+    } else if (w == 1) {
+      1 / (w + 0.1)
+    } else {
+      w
+    }
+  })
+  
+  # 3. Validate nodes
+  message("\n2. Validating source and target nodes against the network.")
+  if (!source_node %in% V(g)$name) stop("Source node not found in network: ", source_node)
+  if (!target_node %in% V(g)$name) stop("Target node not found in network: ", target_node)
+  message("  Both source and target nodes found.")
+  
+  # 4. Find shortest path
+  message("\n3. Finding shortest path from '", source_node, "' to '", target_node, "'...")
+  result <- shortest_paths(g, from = source_node, to = target_node, weights = E(g)$weight, output = "both")
+  
+  path_vertices <- result$vpath[[1]]
+  path_edges <- result$epath[[1]]
+  
+  if (length(path_vertices) > 1 && length(path_edges) > 0) {
+    message("  Path found with ", length(path_edges), " steps.")
+    
+    edge_df <- as_data_frame(g, what = "edges")[path_edges, ]
+    path_df <- edge_df %>%
+      select(Source = from, Target = to, Original_Edge_Score = Edge_Score, Transformed_Weight = weight, Edge_Type)
+    
+    safe_from <- gsub("[^A-Za-z0-9_.-]", "_", source_node)
+    safe_to <- gsub("[^A-Za-z0-9_.-]", "_", target_node)
+    output_file <- file.path(output_directory, paste0("path_", safe_from, "_to_", safe_to, ".csv"))
+    
+    write.csv(path_df, output_file, row.names = FALSE)
+    message("  Saved path to: ", output_file)
+    
+    invisible(list(path_df = path_df))
+  } else {
+    message("  No finite path found between source and target.")
+    invisible(NULL)
+  }
+}
+```
+
+</details>
+
+```r
+# Define the full path and filename for your input CSV file
+my_multi_layered_network_file <- "multi_layered_network_results/multi_layered_network_*.csv" 
+
+# Define the source node 
+my_source_node <- "g__Megamonas"
+
+# Define the target node 
+my_target_node <- "acetate"
+
+# Define the full path for your output directory
+my_output_directory <- "pathfinding_results"
+
+# Call the function with your specific file paths
+pathfinding(
+  multi_layered_network_file = my_multi_layered_network_file, 
+  source_node = my_source_node,                            
+  target_node = my_target_node,
+  output_directory = my_output_directory
+)
+```
+
+#### **Example output**
+
+The `pathfinding` function generates a single CSV file named `path_<source>_to_<target>.csv` for the shortest path found between the specified `source_node` and `target_node`. This file is saved in the specified `output_directory`.
+
+**Example table: `path_g_Megamonas_to_acetate.csv`**
+
+| Source     | Target    | Original_Edge_Score | Transformed_Weight | Edge_Type           |
+|------------|-----------|----------------------|---------------------|----------------------|
+| g_Megamonas  | ko00540   | 0.45                 | 2.21                | Microbe-Pathway      |
+| ko00540    | acetate   | 0.59                 | 1.70                | Pathway-Metabolite   |
+
+Each row in the ``path_<source>_to_<target>.csv` file represents an individual edge along the route from the source node to the target node.
+- `Source`, `Target`: The two nodes connected by the edge.
+- `Original_Edge_Score`: The input edge score from the multi-layered network.
+- `Transformed_Weight`: The cost used for Dijkstra’s algorithm.
+- `Edge_Type`: Indicates the original network layer from which the connection originated.
 
 ### <ins>(3) Node prioritization</ins>
 
@@ -1258,9 +1401,6 @@ node_prioritization <- function(
   filter_other_metabolite_edges
 ) {
   message("Starting metabolite-seeded heat diffusion for node prioritization.")
-  if (filter_other_metabolite_edges) {
-    message("WARNING: 'filter_other_metabolite_edges' is set to TRUE. This will modify the network structure for each seed by EXCLUDING ALL OTHER METABOLITE NODES AND THEIR CONNECTED EDGES. This significantly changes the nature of the diffusion and its interpretation. ONLY THE SEED METABOLITE AND NON-METABOLITE NODES WILL BE INCLUDED IN THE OUTPUT FILE FOR EACH DIFFUSION.")
-  }
   
   # Ensure output directory exists
   if (!dir.exists(output_directory)) {
@@ -1514,11 +1654,13 @@ node_prioritization <- function(
 }
 ```
 
+</details>
+
 #### **Example usage**
 
 ```r
 # Define the full path and filename for your input CSV file
-my_multi_layered_network_file <- "multi_layered_network_results/multi_layered_network.csv"
+my_multi_layered_network_file <- "multi_layered_network_results/multi_layered_network_*.csv"
 
 # Define the full path for your output directory
 my_output_directory <- "node_prioritization_results"
@@ -1532,8 +1674,6 @@ node_prioritization(
   filter_other_metabolite_edges = TRUE 
 )
 ```
-
-</details>
 
 #### **Example output**
 
