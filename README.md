@@ -1215,7 +1215,7 @@ The pathfinding uses the Dijkstra's algorithm to identify the shortest path betw
 
 The node prioritization uses the Laplacian Heat Diffusion (LHD) algorithm to identify microbe-associated metabolites.
 
-### **Required inputs**
+#### **Required inputs**
 
 | File | Description | Required columns |
 | :------------- | :---------- | :--------------- |
