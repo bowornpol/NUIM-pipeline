@@ -1487,6 +1487,8 @@ node_prioritization <- function(
     ggsave(output_path_plot, plot = correlation_plot, width = 8, height = 5, dpi = 600)
     message("    Saved correlation plot for '", seed_metabolite_id, "' to: ", output_path_plot)
   }
+
+  message("Node prioritization complete.")
 }
 ```
 
