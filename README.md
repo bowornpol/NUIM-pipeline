@@ -1334,9 +1334,11 @@ pathfinding <- function(
 
 </details>
 
+#### **Example usage**
+
 ```r
 # Define the full path and filename for your input CSV file
-my_multi_layered_network_file <- "multi_layered_network_results/multi_layered_network_*.csv" 
+my_multi_layered_network_file <- "multi_layered_network_results/multi_layered_network_G2.csv" 
 
 # Define the source node 
 my_source_node <- "g__Megamonas"
@@ -1400,7 +1402,7 @@ node_prioritization <- function(
   stabilization_window_size = 10,
   filter_other_metabolite_edges
 ) {
-  message("Starting metabolite-seeded heat diffusion for node prioritization.")
+  message("Starting node prioritization using LHD algorithm.")
   
   # Ensure output directory exists
   if (!dir.exists(output_directory)) {
@@ -1442,7 +1444,7 @@ node_prioritization <- function(
     as.character()
   
   if (length(all_metabolite_nodes) == 0) {
-    stop("No metabolite nodes found in the network (based on 'Pathway-Metabolite' Edge_Type). Cannot proceed with metabolite-seeded diffusion.")
+    stop("No metabolite nodes found in the network (based on 'Pathway-Metabolite' Edge_Type). Cannot proceed diffusion.")
   }
   message("Identified ", length(all_metabolite_nodes), " unique metabolite nodes for seeding and potential filtering.")
   
@@ -1503,7 +1505,7 @@ node_prioritization <- function(
     
     # --- Determine network for current seed based on filter_other_metabolite_edges ---
     if (filter_other_metabolite_edges) {
-      message("    Applying aggressive filtering: Excluding all nodes that are metabolites EXCEPT the current seed ('", seed_metabolite_id, "') and their connected edges.")
+      message("    Applying filtering: Excluding all nodes that are metabolites EXCEPT the current seed ('", seed_metabolite_id, "') and their connected edges.")
       
       # Identify all other metabolite nodes to exclude (all metabolites MINUS the current seed)
       other_metabolite_nodes_to_exclude <- setdiff(all_metabolite_nodes, seed_metabolite_id)
@@ -1515,9 +1517,9 @@ node_prioritization <- function(
             !(Feature2 %in% other_metabolite_nodes_to_exclude)
         )
       
-      # Check if the seed node itself is still present after aggressive filtering (should be, but good to check)
+      # Check if the seed node itself is still present after filtering 
       if (!seed_metabolite_id %in% unique(c(current_combined_data$Feature1, current_combined_data$Feature2))) {
-        warning("  Seed metabolite '", seed_metabolite_id, "' is not present in the graph after aggressive filtering. This implies it was only connected to other metabolites, which were removed. Skipping diffusion for this seed.")
+        warning("  Seed metabolite '", seed_metabolite_id, "' is not present in the graph after filtering. This implies it was only connected to other metabolites, which were removed. Skipping diffusion for this seed.")
         next
       }
       
@@ -1602,8 +1604,6 @@ node_prioritization <- function(
     final_heat_scores <- H_vector_func(stabilization_t, L_current, H_0_current_graph)
     
     # Create output data frame for this metabolite
-    # IMPORTANT FIX: Now, only nodes present in the *current filtered graph* will be in the output.
-    # Other metabolites (which were excluded from the diffusion) will NOT be present in this output.
     output_df <- data.frame(
       Node = V(g_current)$name, # Nodes from the current filtered graph
       Heat_Score = round(final_heat_scores, 10),
@@ -1660,7 +1660,7 @@ node_prioritization <- function(
 
 ```r
 # Define the full path and filename for your input CSV file
-my_multi_layered_network_file <- "multi_layered_network_results/multi_layered_network_*.csv"
+my_multi_layered_network_file <- "multi_layered_network_results/multi_layered_network_G2.csv"
 
 # Define the full path for your output directory
 my_output_directory <- "node_prioritization_results"
