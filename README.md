@@ -12,7 +12,7 @@ This module defines the procedures required to prepare and process the input dat
 
 - Input data includes `microbial sequencing reads in FASTQ format` and `metabolite concentration table`.  
 - Microbiome data processing involves the use of QIIME2 to generate a feature table and representative sequences. These outputs are subsequently processed using PICRUSt2 for functional prediction, yielding gene abundance, pathway abundance, and pathway contribution data.  
-- Although metabolome data processing may vary depending on user preference and experimental design, NUIM assumes that metabolite concentrations have been appropriately processed by standard practice. For example, users may employ established platforms such as [Metabox](https://academic.oup.com/gigascience/article/doi/10.1093/gigascience/giae005/7629842) or [MetaboAnalyst](https://academic.oup.com/nar/article/52/W1/W398/7642060) to perform metabolomics data processing.
+- Although metabolome data processing may vary depending on user preference and experimental design, NUIM assumes that metabolite concentrations have been appropriately processed by standard practice. For example, users may employ established platforms such as [Metabox]([https://academic.oup.com/gigascience/article/doi/10.1093/gigascience/giae005/7629842](https://metsysbio.com/tools_protocols/metabox-2-0/)) or [MetaboAnalyst]([https://academic.oup.com/nar/article/52/W1/W398/7642060](https://www.metaboanalyst.ca/MetaboAnalyst/docs/RTutorial.xhtml#2.2%20Data%20Processing%20and%20Statistical%20Analysis)) to perform metabolomics data processing.
 
 ### <ins>QIIME2 workflow</ins>
 
