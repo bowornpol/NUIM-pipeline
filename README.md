@@ -1389,10 +1389,10 @@ The node prioritization uses the Laplacian Heat Diffusion (LHD) algorithm to ide
 <summary>Click to show the full R function</summary>
 
 ```r
-library(igraph)   
-library(expm)     
-library(dplyr)    
-library(ggplot2)  
+library(igraph)
+library(expm)
+library(dplyr)
+library(ggplot2)
 
 node_prioritization <- function(
   multi_layered_network_file,
@@ -1412,6 +1412,12 @@ node_prioritization <- function(
     message("Output directory already exists: ", output_directory)
   }
   
+  # Extract base name from input file for output specificity
+  # This gets "multi_layered_network_W2" from "path/to/multi_layered_network_W2.csv"
+  input_file_base_name <- tools::file_path_sans_ext(basename(multi_layered_network_file))
+  # Clean the base name for use in filenames (e.g., replace non-alphanumeric with underscore)
+  cleaned_input_file_name <- gsub("[^A-Za-z0-9_]", "", input_file_base_name)
+
   # 1. Load the multi-layered network file (FULL network data)
   message("\n1. Loading multi-layered network from: ", multi_layered_network_file)
   if (!file.exists(multi_layered_network_file)) {
@@ -1566,7 +1572,7 @@ node_prioritization <- function(
       select(from, to, Edge_Score)
     
     E(g_current)$weight <- weighted_edges_df$Edge_Score[match(paste0(graph_edges_for_weighting$from, graph_edges_for_weighting$to),
-                                                              paste0(weighted_edges_df$from, weighted_edges_df$to))]
+                                                             paste0(weighted_edges_df$from, weighted_edges_df$to))]
     
     if (any(is.na(E(g_current)$weight))) {
       warning("  Some edges in the graph for seed '", seed_metabolite_id, "' could not be matched to an 'Edge_Score' in the input data. Assigning 0 weight to unmatched edges.")
@@ -1611,14 +1617,17 @@ node_prioritization <- function(
     ) %>%
       arrange(desc(Heat_Score)) # Sort by heat score (descending)
     
+    # Generate and save output files with cleaned input file name
+    cleaned_seed_id <- gsub("[^A-Za-z0-9_]", "", seed_metabolite_id) # Clean seed ID for filename
+    
     # Save heat scores to CSV
-    output_file_name_heat <- paste0("heat_scores_", gsub("\\.", "_", seed_metabolite_id), ifelse(filter_other_metabolite_edges, "_filtered_metabolite_nodes", ""), ".csv")
+    output_file_name_heat <- paste0("heat_scores_", cleaned_seed_id, "_", cleaned_input_file_name, ".csv")
     output_path_heat <- file.path(output_directory, output_file_name_heat)
-    write.csv(output_df, file = output_path_heat, row.names = FALSE) # Directly write output_df
+    write.csv(output_df, file = output_path_heat, row.names = FALSE)
     message("    Saved heat scores for '", seed_metabolite_id, "' to: ", output_path_heat)
     
     # Save correlation data to CSV
-    output_file_name_correlation_csv <- paste0("spearman_correlations_", gsub("\\.", "_", seed_metabolite_id), ifelse(filter_other_metabolite_edges, "_filtered_metabolite_nodes", ""), ".csv")
+    output_file_name_correlation_csv <- paste0("spearman_correlations_", cleaned_seed_id, "_", cleaned_input_file_name, ".csv")
     output_path_correlation_csv <- file.path(output_directory, output_file_name_correlation_csv)
     write.csv(correlation_df, file = output_path_correlation_csv, row.names = FALSE)
     message("    Saved Spearman correlation data for '", seed_metabolite_id, "' to: ", output_path_correlation_csv)
@@ -1644,12 +1653,12 @@ node_prioritization <- function(
         panel.border = element_rect(color = "black", fill = NA, size = 1)
       )
     
-    output_file_name_plot <- paste0("correlation_plot_", gsub("\\.", "_", seed_metabolite_id), ifelse(filter_other_metabolite_edges, "_filtered_metabolite_nodes", ""), ".jpg")
+    output_file_name_plot <- paste0("correlation_plot_", cleaned_seed_id, "_", cleaned_input_file_name, ".jpg")
     output_path_plot <- file.path(output_directory, output_file_name_plot)
     ggsave(output_path_plot, plot = correlation_plot, width = 8, height = 5, dpi = 600)
     message("    Saved correlation plot for '", seed_metabolite_id, "' to: ", output_path_plot)
   }
-
+  
   message("Node prioritization complete.")
 }
 ```
