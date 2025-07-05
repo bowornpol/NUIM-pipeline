@@ -1420,7 +1420,7 @@ construct_multi_layered_network(
 
 #### **Example output**
 
-The `construct_multi_layered_network` function generates a single CSV file at the specified `output_file` path (e.g., `multi_layered_network_results/multi_layered_network_*.csv`). This file integrates all specified network layers, filtered to include only edges connected to GSEA-identified pathways, and presented in a standardized format.
+The `construct_multi_layered_network` function generates a single CSV file at the specified `output_file` path (e.g., `multi_layered_network_results/multi_layered_network_[class].csv`). This file integrates all specified network layers through connected GSEA-significant pathway nodes.
 
 **Example table: `multi_layered_network_G2.csv`**
 
