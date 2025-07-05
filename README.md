@@ -176,7 +176,7 @@ pathway_pipeline.py \
   -i KO_metagenome_out/pred_metagenome_unstrat.tsv.gz \
   -o pathway_abundance \
   --no_regroup \
-  --map <pathway_gene_map.tsv>
+  --map pathway_gene_map.tsv
 
 # Generate pathway contribution data (ASV × pathway)
 pathway_pipeline.py \
@@ -186,7 +186,7 @@ pathway_pipeline.py \
   --per_sequence_abun KO_metagenome_out/seqtab_norm.tsv.gz \
   --per_sequence_function KO_predicted.tsv.gz \
   --no_regroup \
-  --map <pathway_gene_map.tsv>
+  --map pathway_gene_map.tsv
 
 # Gene abundance data (KEGG Orthologs) output by PICRUSt2:
 # Located in: KO_metagenome_out/pred_metagenome_unstrat.tsv.gz
