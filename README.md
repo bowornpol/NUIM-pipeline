@@ -353,6 +353,8 @@ construct_microbe_pathway_network <- function(
 #### **Example usage**
 
 ```r
+source("https://raw.githubusercontent.com/bowornpol/NUIM-pipeline/main/code/construct_microbe_pathway_network.R")
+
 construct_microbe_pathway_network(
   contrib_file = "path_abun_contrib.csv",      
   metadata_file = "sample_metadata.csv",      
@@ -679,6 +681,8 @@ construct_pathway_pathway_network <- function(
 #### **Example usage**
 
 ```r
+source("https://raw.githubusercontent.com/bowornpol/NUIM-pipeline/main/code/construct_pathway_pathway_network.R")
+
 construct_pathway_pathway_network(
    abundance_file = "pred_metagenome_unstrat.csv", 
    metadata_file = "sample_metadata.csv",          
@@ -724,7 +728,7 @@ The pathway–metabolite network is constructed by calculating pairwise correlat
 | :-----------------------------| :------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :-------------------------------------------- |
 | `path_abun_unstrat.csv`       | Pathway abundance data. Values will be converted to relative abundance within the function.                                                                        | `SampleID`, `FunctionID`                      |
 | `metabolite_concentration.csv`| Metabolite concentration data.                                                                                                                                     | `SampleID`, Metabolite names (as columns)     |
-| `sample_metadata.csv`         | (Optional) Sample metadata with group or condition information. If not provided or `class` column is missing, correlations will be performed on the overall dataset. | `SampleID`, `class`                           |
+| `sample_metadata.csv`         | Sample metadata with group or condition information. If not provided or `class` column is missing, correlations will be performed on the overall dataset. | `SampleID`, `class`                           |
 | `gsea_results_*.csv`          | GSEA results containing identified pathways.                                                                                                                       | `ID` (pathway ID)                             |
 
 <details>
@@ -788,8 +792,8 @@ construct_pathway_metabolite_network <- function(
     if (file.exists(gsea_results_file)) {
       gsea_basename <- tools::file_path_sans_ext(basename(gsea_results_file))
       
-      # Regex to strictly capture 'source_group' and 'target_group' from '_vs_' pattern
-      match_result <- stringr::str_match(gsea_basename, "^gsea_results_([^_]+)_vs_([^_]+)$")
+      # Account for additional parameters after the group names
+      match_result <- stringr::str_match(gsea_basename, "^gsea_results_([^_]+)_vs_([^_]+).*$")
       
       if (!is.na(match_result[1,1])) {
         gsea_source_group <- match_result[1,2]
@@ -799,7 +803,7 @@ construct_pathway_metabolite_network <- function(
         message("Derived GSEA filename suffix: '", gsea_suffix, "' (from GSEA target group)")
         
       } else {
-        message("  Warning: GSEA results file name '", basename(gsea_results_file), "' did not strictly match the 'gsea_results_*_vs_*.csv' pattern. No GSEA-specific group filtering will be applied.")
+        message("  Warning: GSEA results file name '", basename(gsea_results_file), "' did not strictly match the 'gsea_results_SOURCE_vs_TARGET*.csv' pattern. No GSEA-specific group filtering will be applied based on filename.")
       }
     } else {
       message("  Warning: GSEA results file '", gsea_results_file, "' not found. No GSEA-specific group filtering will be applied based on filename.")
@@ -1119,6 +1123,8 @@ construct_pathway_metabolite_network <- function(
 #### **Example usage**
 
 ```r
+source("https://raw.githubusercontent.com/bowornpol/NUIM-pipeline/main/code/construct_pathway_metabolite_network.R")
+
 construct_pathway_metabolite_network(
   pathway_abundance_file = "path_abun_unstrat.csv", 
   metabolite_concentration_file = "metabolite_concentration.csv",
@@ -1174,13 +1180,14 @@ These networks are finally integrated through connected pathway nodes to constru
 library(dplyr)
 library(tidyr)
 library(stringr)
+library(tools) 
 
 construct_multi_layered_network <- function(
   gsea_results_file,
   microbe_pathway_file,
   pathway_jaccard_file,
   pathway_metabolite_file,
-  output_directory 
+  output_directory # Renamed from output_file to clarify it's a directory
 ) {
   message("Starting multi-layered network construction.")
   
@@ -1197,22 +1204,28 @@ construct_multi_layered_network <- function(
   gsea_target_group_from_filename <- NULL 
   
   if (!is.null(gsea_results_file)) {
-    gsea_basename <- tools::file_path_sans_ext(basename(gsea_results_file))
-    
-    match_result <- stringr::str_match(gsea_basename, "^gsea_results_([^_]+)_vs_([^_]+)$")
-    
-    if (!is.na(match_result[1,1])) { 
-      gsea_source_group <- match_result[1,2] 
-      gsea_target_group_from_filename <- match_result[1,3] 
+    # Check if the GSEA file actually exists before trying to parse its name
+    if (file.exists(gsea_results_file)) {
+      gsea_basename <- tools::file_path_sans_ext(basename(gsea_results_file))
       
-      gsea_suffix <- gsea_target_group_from_filename 
-      message("Derived GSEA filename suffix: '", gsea_suffix, "' (from GSEA target group)")
+      # Account for additional parameters after the group names
+      match_result <- stringr::str_match(gsea_basename, "^gsea_results_([^_]+)_vs_([^_]+).*$")
       
+      if (!is.na(match_result[1,1])) { # If the full pattern matches successfully
+        gsea_source_group <- match_result[1,2] 
+        gsea_target_group_from_filename <- match_result[1,3] 
+        
+        gsea_suffix <- gsea_target_group_from_filename # Use target group as suffix for filename
+        message("Derived GSEA filename suffix: '", gsea_suffix, "' (from GSEA target group)")
+        
+      } else {
+        message("  Warning: GSEA results file name '", basename(gsea_results_file), "' did not strictly match the 'gsea_results_SOURCE_vs_TARGET*.csv' pattern for precise group identification. Output filename will use 'overall' suffix.")
+      }
     } else {
-      message("  Warning: GSEA results file name '", basename(gsea_results_file), "' did not strictly match the 'gsea_results_*_vs_*.csv' pattern for precise group filtering. No GSEA-specific group filtering will be applied.")
+      message("  Warning: GSEA results file '", gsea_results_file, "' not found. Output filename will use 'overall' suffix.")
     }
   } else {
-    message("No GSEA results file provided, defaulting to processing all groups from metadata.")
+    message("No GSEA results file provided, defaulting to processing without GSEA-specific group identification.")
   }
   
   # 1. Load GSEA results to identify all pathways to be included
@@ -1384,10 +1397,12 @@ construct_multi_layered_network <- function(
 #### **Example usage**
 
 ```r
+source("https://raw.githubusercontent.com/bowornpol/NUIM-pipeline/main/code/construct_multi_layered_network.R")
+
 # Define the full path and filename for your input CSV file
 my_microbe_pathway_file <- "microbe_pathway_network_results/microbe_pathway_network_G2_median.csv"
 my_pathway_jaccard_file <- "pathway_pathway_network_results/pathway_jaccard_G1_vs_G2.csv"
-my_pathway_metabolite_file <- "pathway_metabolite_network_results/pathway_metabolite_network_G2_pearson_filter_pearson_filter_none_corr_0.30_pval_null_qval_null_qadj_null.csv.csv"
+my_pathway_metabolite_file <- "pathway_metabolite_network_results/pathway_metabolite_network_G2_pearson_filter_pearson_filter_none_corr_0.30_pval_null_qval_null_qadj_null.csv"
 my_gsea_file <- "pathway_pathway_network_results/gsea_results_G1_vs_G2_0.1_fdr_signed_log_pvalue.csv"
 
 # Define the full path and filename for your output CSV file
@@ -1546,6 +1561,8 @@ pathfinding <- function(
 #### **Example usage**
 
 ```r
+source("https://raw.githubusercontent.com/bowornpol/NUIM-pipeline/main/code/pathfinding.R")
+
 # Define the full path and filename for your input CSV file
 my_multi_layered_network_file <- "multi_layered_network_results/multi_layered_network_G2.csv" 
 
@@ -1569,7 +1586,7 @@ pathfinding(
 
 #### **Example output**
 
-The `pathfinding` function generates a single CSV file named `path_<source>_to_<target>.csv` for the shortest path found between the specified `source_node` and `target_node`. This file is saved in the specified `output_directory`.
+The `pathfinding` function generates a single CSV file named `path_[source]_to_[target].csv` for the shortest path found between the specified `source_node` and `target_node`. This file is saved in the specified `output_directory`.
 
 **Example table: `path_g_Megamonas_to_acetate.csv`**
 
@@ -1877,6 +1894,8 @@ node_prioritization <- function(
 #### **Example usage**
 
 ```r
+source("https://raw.githubusercontent.com/bowornpol/NUIM-pipeline/main/code/node_prioritization.R")
+
 # Define the full path and filename for your input CSV file
 my_multi_layered_network_file <- "multi_layered_network_results/multi_layered_network_G2.csv"
 
@@ -1897,11 +1916,11 @@ node_prioritization(
 
 The `node_prioritization` function generates multiple output files for each diffusion set in the specified `output_directory`:
 
-1.  **`heat_scores_*.csv`**: A CSV file containing the final heat scores for all nodes that participated in the diffusion from that specific metabolite seed, sorted by `Heat_Score` in descending order.
-2.  **`spearman_correlations_*.csv`**: A CSV file detailing the Spearman correlations between heat vectors at consecutive time steps, used for stabilization assessment.
-3.  **`correlation_plot_*.jpg`**: A JPEG image visualizing the Spearman correlations over time, with the identified stabilization time marked.
+1.  **`heat_scores_[metabolite]_[network].csv`**: A CSV file containing the final heat scores for all nodes that participated in the diffusion from that specific metabolite seed, sorted by `Heat_Score` in descending order.
+2.  **`spearman_correlations_[metabolite]_[network]*.csv`**: A CSV file detailing the Spearman correlations between heat vectors at consecutive time steps, used for stabilization assessment.
+3.  **`correlation_plot_[metabolite]_[network]*.jpg`**: A JPEG image visualizing the Spearman correlations over time, with the identified stabilization time marked.
 
-**Example table: `heat_scores_acetate_filtered_metabolite_nodes.csv` (when `filter_other_metabolite_edges = TRUE`)**
+**Example table: `heat_scores_acetate_multi_layered_network_G2.csv`**
 
 | Node | Heat_Score |
 | :------------- | :---------- |
