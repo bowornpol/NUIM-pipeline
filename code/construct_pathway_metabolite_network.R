@@ -12,11 +12,11 @@ construct_pathway_metabolite_network <- function(
   metadata_file,
   output_file, # This is used as the output directory
   correlation_method = c("spearman", "pearson"),
-  filter_by = c("none", "p_value", "q_value"),
+  filter_by = c("none", "p_value", "q_value"), # Still used for filtering logic, just not filename
   corr_cutoff,
-  p_value_cutoff,
-  q_value_cutoff,
-  q_adjust_method = c("bonferroni", "fdr")
+  p_value_cutoff, # Still used for filtering logic, just not filename
+  q_value_cutoff, # Still used for filtering logic, just not filename
+  q_adjust_method = c("bonferroni", "fdr") # Still used for filtering logic, just not filename
 ) {
   # Validate inputs
   correlation_method <- match.arg(correlation_method)
@@ -349,25 +349,16 @@ construct_pathway_metabolite_network <- function(
       group_name_for_file <- gsea_suffix
     }
     
-    # Format filter_by for filename 
-    filter_by_fname <- filter_by # Will correctly be "none", "p_value", or "q_value"
-    
-    # Format cutoffs for filename 
-    # Use formatC to avoid scientific notation for very small numbers, use "f" for fixed, "e" for exponential
+    # Format cutoffs for filename (keeping decimals)
+    # Use formatC to avoid scientific notation for very small numbers, use "f" for fixed
     corr_cutoff_fname <- formatC(corr_cutoff, format = "f", digits = 2) 
-    p_value_cutoff_fname <- if (is.null(p_value_cutoff)) "null" else formatC(p_value_cutoff, format = "e", digits = 1) 
-    q_value_cutoff_fname <- if (is.null(q_value_cutoff)) "null" else formatC(q_value_cutoff, format = "e", digits = 1) 
-    q_adjust_method_fname <- if (filter_by == "q_value") q_adjust_method else "null" 
     
+    # Construct the simplified output filename
     output_filename <- paste0(
       "pathway_metabolite_network_",
       group_name_for_file, "_",
       correlation_method, "_",
-      "filter_", filter_by_fname, "_",
-      "corr_", corr_cutoff_fname, "_",
-      "pval_", p_value_cutoff_fname, "_",
-      "qval_", q_value_cutoff_fname, "_",
-      "qadj_", q_adjust_method_fname,
+      corr_cutoff_fname,
       ".csv"
     )
     
