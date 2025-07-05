@@ -12,20 +12,20 @@ The NUIM pipeline depends on a set of external bioinformatics tools and an R-bas
 
 | Category          | Tool / R Package         |
 | :---------------- | :----------------------- |
-| **External Tools**| QIIME2 – for microbiome data processing |
-|                   | PICRUSt2 – for functional prediction     |
-|                   | Cytoscape + cytoHubba plugin – for hub identification | 
-| **R Packages**    | `dplyr` – for data manipulation              |
-|                   | `tidyr` – for data reshaping                 |
-|                   | `stats` – for statistical testing            |
-|                   | `tibble` – for tidy data frame support       |
-|                   | `stringr` – for string operations            |
-|                   | `tools` – for file and object manipulation   |
-|                   | `DESeq2` – for differential expression analysis |
-|                   | `clusterProfiler` – for GSEA analysis                 | 
-|                   | `igraph` – for handling network data and pathfinding analysis |
-|                   | `expm` – for matrix exponential in node prioritization analysis | 
-|                   | `ggplot2` – for data visualization           |
+| **External Tools**| `QIIME2` – for microbiome data processing. |
+|                   | `PICRUSt2` – for functional prediction.     |
+|                   | `Cytoscape` + cytoHubba plugin – for hub identification. | 
+| **R Packages**    | `dplyr` – for data manipulation.              |
+|                   | `tidyr` – for data reshaping.                 |
+|                   | `stats` – for statistical testing.            |
+|                   | `tibble` – for tidy data frame support.       |
+|                   | `stringr` – for string operations.            |
+|                   | `tools` – for file and object manipulation.   |
+|                   | `DESeq2` – for differential expression analysis. |
+|                   | `clusterProfiler` – for GSEA analysis.                 | 
+|                   | `igraph` – for handling network data and pathfinding analysis. |
+|                   | `expm` – for matrix exponential in node prioritization analysis. | 
+|                   | `ggplot2` – for data visualization.           |
 
 ## Module 1: Data preparation and processing
 
@@ -43,7 +43,7 @@ This section provides a general QIIME2 workflow for processing paired-end 16S rR
 
 | File            | Description                         |
 |-----------------|-----------------------------------|
-| `FASTQ`         | 16S rRNA gene sequencing reads reads. |
+| `FASTQ`         | 16S rRNA gene sequencing reads. |
 | `manifest.tsv`  | Mapping of sample IDs to FASTQ files. |  
 
 <p align="center">
