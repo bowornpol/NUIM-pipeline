@@ -163,7 +163,7 @@ conda activate picrust2
 picrust2_pipeline.py \
   -s rep_seqs.fasta \
   -i feature-table.biom \
-  -o picrust2_out_nsti_default
+  -o picrust2_out
 
 # Optional: Add --max_nsti to filter low-confidence ASVs
 # e.g., --max_nsti 0.5
@@ -173,18 +173,18 @@ picrust2_pipeline.py \
 
 # Generate pathway abundance data (sample × pathway)
 pathway_pipeline.py \
-  -i picrust2_out/<function_output_folder>/pred_metagenome_unstrat.tsv.gz \
-  -o pathways_abundance \
+  -i KO_metagenome_out/pred_metagenome_unstrat.tsv.gz \
+  -o pathway_abundance \
   --no_regroup \
   --map <pathway_gene_map.tsv>
 
 # Generate pathway contribution data (ASV × pathway)
 pathway_pipeline.py \
-  -i picrust2_out/<function_output_folder>/pred_metagenome_unstrat.tsv.gz \
-  -o pathways_contrib \
+  -i KO_metagenome_out/pred_metagenome_unstrat.tsv.gz \
+  -o pathway_contrib \
   --per_sequence_contrib \
-  --per_sequence_abun picrust2_out/<function_output_folder>/seqtab_norm.tsv.gz \
-  --per_sequence_function <predicted_functions.tsv.gz> \
+  --per_sequence_abun KO_metagenome_out/seqtab_norm.tsv.gz \
+  --per_sequence_function KO_predicted.tsv.gz \
   --no_regroup \
   --map <pathway_gene_map.tsv>
 
