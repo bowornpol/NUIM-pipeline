@@ -770,11 +770,11 @@ construct_pathway_metabolite_network <- function(
   metadata_file,
   output_file, # This is used as the output directory
   correlation_method = c("spearman", "pearson"),
-  filter_by = c("none", "p_value", "q_value"),
+  filter_by = c("none", "p_value", "q_value"), # Still used for filtering logic, just not filename
   corr_cutoff,
-  p_value_cutoff,
-  q_value_cutoff,
-  q_adjust_method = c("bonferroni", "fdr")
+  p_value_cutoff, # Still used for filtering logic, just not filename
+  q_value_cutoff, # Still used for filtering logic, just not filename
+  q_adjust_method = c("bonferroni", "fdr") # Still used for filtering logic, just not filename
 ) {
   # Validate inputs
   correlation_method <- match.arg(correlation_method)
@@ -1107,25 +1107,16 @@ construct_pathway_metabolite_network <- function(
       group_name_for_file <- gsea_suffix
     }
     
-    # Format filter_by for filename 
-    filter_by_fname <- filter_by # Will correctly be "none", "p_value", or "q_value"
-    
-    # Format cutoffs for filename 
-    # Use formatC to avoid scientific notation for very small numbers, use "f" for fixed, "e" for exponential
+    # Format cutoffs for filename (keeping decimals)
+    # Use formatC to avoid scientific notation for very small numbers, use "f" for fixed
     corr_cutoff_fname <- formatC(corr_cutoff, format = "f", digits = 2) 
-    p_value_cutoff_fname <- if (is.null(p_value_cutoff)) "null" else formatC(p_value_cutoff, format = "e", digits = 1) 
-    q_value_cutoff_fname <- if (is.null(q_value_cutoff)) "null" else formatC(q_value_cutoff, format = "e", digits = 1) 
-    q_adjust_method_fname <- if (filter_by == "q_value") q_adjust_method else "null" 
     
+    # Construct the simplified output filename
     output_filename <- paste0(
       "pathway_metabolite_network_",
       group_name_for_file, "_",
       correlation_method, "_",
-      "filter_", filter_by_fname, "_",
-      "corr_", corr_cutoff_fname, "_",
-      "pval_", p_value_cutoff_fname, "_",
-      "qval_", q_value_cutoff_fname, "_",
-      "qadj_", q_adjust_method_fname,
+      corr_cutoff_fname,
       ".csv"
     )
     
@@ -1163,9 +1154,9 @@ construct_pathway_metabolite_network(
 
 #### **Example output**
 
-The function creates an output directory (e.g., `pathway_metabolite_network_results`) containing `.csv` files for each group analyzed (e.g., `pathway_metabolite_network_[class]_[correlation_method]_[filter_by]_[corr_cutoff]_[p_value_cutoff]_[q_value_cutoff]_[q_adjust_method].csv` or `pathway_metabolite_network_overall.csv` if no groups are defined).
+The function creates an output directory (e.g., `pathway_metabolite_network_results`) containing `.csv` files for each group analyzed (e.g., `pathway_metabolite_network_[class]_[correlation_method]_[corr_cutoff].csv` or `pathway_metabolite_network_overall.csv` if no groups are defined).
 
-**Example table: `pathway_metabolite_network_G2_pearson_filter_none_corr_0.30_pval_null_qval_null_qadj_null.csv`**
+**Example table: `pathway_metabolite_network_G2_pearson_corr_0.30.csv`**
 
 | FunctionID | MetaboliteID | Correlation | P_value | Q_value | Group |
 |:-----------|:-------------|:------------|:--------|:--------|:------|
@@ -1423,7 +1414,7 @@ source("https://raw.githubusercontent.com/bowornpol/NUIM-pipeline/main/code/cons
 # Define the full path and filename for your input CSV file
 my_microbe_pathway_file <- "microbe_pathway_network_results/microbe_pathway_network_G2_median.csv"
 my_pathway_jaccard_file <- "pathway_pathway_network_results/pathway_jaccard_G1_vs_G2.csv"
-my_pathway_metabolite_file <- "pathway_metabolite_network_results/pathway_metabolite_network_G2_pearson_filter_none_corr_0.30_pval_null_qval_null_qadj_null.csv"
+my_pathway_metabolite_file <- "pathway_metabolite_network_results/pathway_metabolite_network_G2_pearson_corr_0.30.csv"
 my_gsea_file <- "pathway_pathway_network_results/gsea_results_G1_vs_G2_0.1_fdr_signed_log_pvalue.csv"
 
 # Define the full path and filename for your output CSV file
