@@ -1984,8 +1984,3 @@ The `node_prioritization` function generates multiple output files for each diff
 Each row in the `heat_scores_*.csv` file represents a node in the diffusion network and its calculated heat score.
 - `Node`: The identifier for a node in the network (e.g., microbe, pathway, metabolite).
 - `Heat_Score`: The calculated heat score for that node at the diffusion stabilization time, indicating its importance relative to the seed node.
-
-## References
-
-
-
