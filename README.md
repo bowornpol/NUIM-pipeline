@@ -1165,7 +1165,7 @@ construct_pathway_metabolite_network(
 
 The function creates an output directory (e.g., `pathway_metabolite_network_results`) containing `.csv` files for each group analyzed (e.g., `pathway_metabolite_network_[class]_[correlation_method]_[filter_by]_[corr_cutoff]_[p_value_cutoff]_[q_value_cutoff]_[q_adjust_method].csv` or `pathway_metabolite_network_overall.csv` if no groups are defined).
 
-**Example table: `pathway_metabolite_network_G2_pearson_filter_pearson_filter_none_corr_0.30_pval_null_qval_null_qadj_null.csv`**
+**Example table: `pathway_metabolite_network_G2_pearson_filter_none_corr_0.30_pval_null_qval_null_qadj_null.csv`**
 
 | FunctionID | MetaboliteID | Correlation | P_value | Q_value | Group |
 |:-----------|:-------------|:------------|:--------|:--------|:------|
@@ -1423,7 +1423,7 @@ source("https://raw.githubusercontent.com/bowornpol/NUIM-pipeline/main/code/cons
 # Define the full path and filename for your input CSV file
 my_microbe_pathway_file <- "microbe_pathway_network_results/microbe_pathway_network_G2_median.csv"
 my_pathway_jaccard_file <- "pathway_pathway_network_results/pathway_jaccard_G1_vs_G2.csv"
-my_pathway_metabolite_file <- "pathway_metabolite_network_results/pathway_metabolite_network_G2_pearson_filter_pearson_filter_none_corr_0.30_pval_null_qval_null_qadj_null.csv"
+my_pathway_metabolite_file <- "pathway_metabolite_network_results/pathway_metabolite_network_G2_pearson_filter_none_corr_0.30_pval_null_qval_null_qadj_null.csv"
 my_gsea_file <- "pathway_pathway_network_results/gsea_results_G1_vs_G2_0.1_fdr_signed_log_pvalue.csv"
 
 # Define the full path and filename for your output CSV file
