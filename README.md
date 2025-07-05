@@ -1985,5 +1985,7 @@ Each row in the `heat_scores_*.csv` file represents a node in the diffusion netw
 - `Node`: The identifier for a node in the network (e.g., microbe, pathway, metabolite).
 - `Heat_Score`: The calculated heat score for that node at the diffusion stabilization time, indicating its importance relative to the seed node.
 
-### <ins>References</ins>
+## References
+
+
 
