@@ -14,7 +14,7 @@ The NUIM pipeline depends on a set of external bioinformatics tools and an R-bas
 | :---------------- | :----------------------- |
 | **External tools**| `QIIME2` – for microbiome data processing. |
 |                   | `PICRUSt2` – for functional prediction.     |
-|                   | `Cytoscape` + cytoHubba plugin – for hub identification. | 
+|                   | `Cytoscape` + `cytoHubba` plugin – for hub identification. | 
 | **R packages**    | `dplyr` – for data manipulation.              |
 |                   | `tidyr` – for data reshaping.                 |
 |                   | `stats` – for statistical testing.            |
