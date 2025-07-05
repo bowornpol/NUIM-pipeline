@@ -1949,8 +1949,15 @@ my_output_directory <- "node_prioritization_results"
 node_prioritization(
   multi_layered_network_file = my_multi_layered_network_file,
   output_directory = my_output_directory,
-  # Set to TRUE to exclude other metabolite nodes from the diffusion network for each seed.
-  # Set to FALSE to include all nodes in the diffusion network.
+  # filter_other_metabolite_edges: This parameter controls the scope of the diffusion network
+  # for each metabolite seed.
+  #   - Set to TRUE: For each metabolite seed, the diffusion will occur ONLY within
+  #     the sub-network that does *not* contain any other metabolite nodes (except the seed itself).
+  #     This focuses the diffusion on the pathways and microbes directly connected to the seed,
+  #     without "leaking" heat to other metabolites.
+  #   - Set to FALSE: The diffusion will occur across the ENTIRE multi-layered network,
+  #     allowing heat to spread to all connected nodes, including other metabolite nodes.
+  #     This provides a broader view of the seed's influence across the full network.
   filter_other_metabolite_edges = TRUE 
 )
 ```
