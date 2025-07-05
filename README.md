@@ -1486,7 +1486,7 @@ The hub identification will be perform on Cytoscape with cytoHubba plugin. User 
 The example output below shows the result of applying the MCC algorithm using cytoHubba in Cytoscape. The top-ranked pathways are highlighted in the network view and listed in a results table, along with various centrality scores used to assess their importance.
 
 <p align="center">
-  <img src="figures/cytohubba.png" width="500"/>
+  <img src="figures/cytohubba.png" width="700"/>
 </p>
 
 ### <ins>(2) Pathfinding</ins>
