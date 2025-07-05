@@ -1478,12 +1478,12 @@ The hub identification will be perform on Cytoscape with cytoHubba plugin. User 
 1. Go to **File → Import → Network from File**, and select your input file (e.g., `multi_layered_network_G2.csv`).
 2. In the import settings, assign **Source Node** to the first column and **Target Node** to the second column.
 3. Open the **cytoHubba** tab in the Control Panel. Under *Target Network*, select your imported network and click **Calculate** under the *Node's Score* section.
-4. In the *Select nodes with Hubba scores* section, specify the number of top nodes to rank using the **MCC algorithm**, then click **Submit**.
-5. To export the result table, click **Export Table to File**.
+4. In the *Select nodes with Hubba nodes* section, specify the number of top nodes to rank using the **MCC** algorithm, then click **Submit**.
+5. To export the result table, navigate to the **Unassigned Tables** tab, then click **Export Table to File**.
 
 #### **Example output**
 
-The example output below shows the result of applying the MCC algorithm using cytoHubba in Cytoscape. The top-ranked pathways are highlighted in the network view and listed in a results table, along with various centrality scores used to assess their importance.
+The example output below shows the result of applying the MCC algorithm using cytoHubba in Cytoscape. The top-ranked hub pathways are highlighted in the network view and listed in a results table, along with various centrality scores used to assess their importance.
 
 <p align="center">
   <img src="figures/cytohubba.png" width="850"/>
