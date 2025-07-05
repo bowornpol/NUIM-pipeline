@@ -6,6 +6,27 @@ We developed NUIM, a modular, network-based framework for integrating microbiome
   <img src="figures/NUIM_overview.png" width="500"/>
 </p>
 
+#### **Required tools and R packages**
+
+The NUIM pipeline depends on a set of external bioinformatics tools and an R-based environment for network-based analyses. The versions of these tools and packages may vary depending on the user. The following table details the requirements: 
+
+| Category          | Tool / R Package         |
+| :---------------- | :----------------------- |
+| **External Tools**| QIIME2 – for microbiome data processing |
+|                   | PICRUSt2 – for functional prediction     |
+|                   | Cytoscape + cytoHubba plugin – for hub identification | 
+| **R Packages**    | `dplyr` – for data manipulation              |
+|                   | `tidyr` – for data reshaping                 |
+|                   | `stats` – for statistical testing            |
+|                   | `tibble` – for tidy data frame support       |
+|                   | `stringr` – for string operations            |
+|                   | `tools` – for file and object manipulation   |
+|                   | `DESeq2` – for differential expression analysis |
+|                   | `clusterProfiler` – for GSEA analysis                 | 
+|                   | `igraph` – for handling network data and pathfinding analysis |
+|                   | `expm` – for matrix exponential in node prioritization analysis | 
+|                   | `ggplot2` – for data visualization           |
+
 ## Module 1: Data preparation and processing
 
 This module defines the procedures required to prepare and process the input data for downstream network construction.
