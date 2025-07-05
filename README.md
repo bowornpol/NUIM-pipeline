@@ -203,7 +203,7 @@ pathway_pipeline.py \
 
 ## Module 2: Network construction
 
-This module constructs a tripartite network linking microbial taxa, functional pathways, and metabolites. Follow the steps below to construct each network layer using the provided R functions:
+This module constructs a tripartite network linking microbial taxa, functional pathways, and metabolites, based on the processed data from **Module 1**. Follow the steps below to construct each network layer using the provided R functions:
 
 ### <ins>STEP 1: Microbe–pathway network construction</ins>
 
@@ -1461,7 +1461,7 @@ Each row represents a connection between two features (`Feature1`, `Feature2`).
 
 ## Module 3: Network Analysis
 
-This module provides three network analyses designed to identify context-specific associations. It takes the multi-layered network generated from the network construction module as input.
+This module provides three network analyses designed to identify context-specific associations. It takes the multi-layered network generated from **Module 2** as input.
 
 ### <ins>(1) Hub identification</ins>
 
