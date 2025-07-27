@@ -26,6 +26,10 @@ The NUIM pipeline depends on a set of external bioinformatics tools and an R-bas
 |                   | `expm` – for matrix exponential in node prioritization analysis. | 
 |                   | `ggplot2` – for data visualization.           |
 
+<p align="center">
+  <img src="figures/NUIM_function.png" width="500"/>
+</p>
+
 **NOTE**: Run this function `read_input_file` in your R environment *once* before attempting to execute any other functions in the pipeline. This utility function is crucial for the pipeline as it handles the loading of all input data files, supporting both CSV and TSV formats. 
 
 ```R
