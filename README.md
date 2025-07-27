@@ -3,7 +3,7 @@
 We developed NUIM, a modular, network-based framework for integrating microbiome and metabolome data systematically. NUIM consists of three modules: (1) data preparation and processing, (2) network construction, and (3) network analysis. It provides a wide variety of network analyses to identify context-specific associations. These include hub identification, pathfinding, and node prioritization.
 
 <p align="center">
-  <img src="figures/NUIM_overview.png" width="500"/>
+  <img src="figures/pipeline_overall.png" width="500"/>
 </p>
 
 #### **Required tools and R packages**
@@ -1601,7 +1601,7 @@ source_node <- "g__Megamonas"
 # Define the target node 
 target_node <- "acetate"
 
-pathfinding(
+find_path(
   multi_layered_network_file = multi_layered_network_file_path, 
   source_node = my_source_node,                            
   target_node = my_target_node,
@@ -1926,8 +1926,8 @@ node_prior(
 The function generates multiple output files for each diffusion set in the specified `output_file`:
 
 1.  **`heat_scores_[metabolite]_[network].csv`**: A CSV file containing the final heat scores for all nodes that participated in the diffusion from that specific metabolite seed, sorted by `Heat_Score` in descending order.
-2.  **`spearman_correlations_[metabolite]_[network]*.csv`**: A CSV file detailing the Spearman correlations between heat vectors at consecutive time steps, used for stabilization assessment.
-3.  **`correlation_plot_[metabolite]_[network]*.jpg`**: A JPEG image visualizing the Spearman correlations over time, with the identified stabilization time marked.
+2.  **`spearman_correlations_[metabolite]_[network].csv`**: A CSV file detailing the Spearman correlations between heat vectors at consecutive time steps, used for stabilization assessment.
+3.  **`correlation_plot_[metabolite]_[network].jpg`**: A JPEG image visualizing the Spearman correlations over time, with the identified stabilization time marked.
 
 **Example table: `heat_scores_acetate_multi_layered_network_G2_from_gsea_G1_vs_G2.csv`**
 
