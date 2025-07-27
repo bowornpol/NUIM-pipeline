@@ -1034,7 +1034,7 @@ source("https://raw.githubusercontent.com/bowornpol/NUIM-pipeline/main/code/con_
 # Replace these with your actual file paths and desired output location
 pathway_abun_file_path <- "data/path_abun_unstrat.tsv" 
 metabolite_conc_file_path <- "data/metabolite_concentration.csv" 
-gsea_results_file_path <- "data/gsea_results_G1_vs_G1_0.05_BH_signed_log_pvalue.csv"
+gsea_results_file_path <- "data/gsea_results_G1_vs_G2_0.05_BH_signed_log_pvalue.csv"
 metadata_file_path <- "data/sample_metadata.csv" 
 output_directory_pmn <- "pathway_metabolite_network_results"
 
@@ -1082,7 +1082,7 @@ These networks are finally integrated through connected pathway nodes to constru
 | File | Description | Required columns |
 | :------------- | :---------- | :--------------- |
 | `microbe_pathway_network_*.csv` | Microbe-pathway network table. | `TaxonID`, `FunctionID`, `relative_contribution` |
-| `pathway_jpatgway_network_*.csv` | Pathway-pathway network table. | `FunctionID_1`, `FunctionID_2`, `jaccard_index` |
+| `pathway_pathway_network_*.csv` | Pathway-pathway network table. | `FunctionID_1`, `FunctionID_2`, `jaccard_index` |
 | `pathway_metabolite_network_*.csv` | Pathway-metabolite network table. | `FunctionID`, `MetaboliteID`, `correlation` |
 | `gsea_results_*.csv` | GSEA results containing identified pathways. | `ID` (pathway ID) |
 
@@ -1093,17 +1093,16 @@ These networks are finally integrated through connected pathway nodes to constru
 con_mln <- function(
   gsea_results_file,
   microbe_pathway_file,
-  pathway_jaccard_file,
+  pathway_pathway_file,
   pathway_metabolite_file,
-  output_directory,
+  output_file, 
   file_type = c("csv", "tsv")
 ) {
   file_type <- match.arg(file_type)
   
-  
   # Create output directory if it doesn't exist
-  if (!dir.exists(output_directory)) {
-    dir.create(output_directory, recursive = TRUE)
+  if (!dir.exists(output_file)) { # Changed to output_file
+    dir.create(output_file, recursive = TRUE)
   }
   
   # Initialize variables to hold GSEA derived names for filename and filtering
@@ -1186,11 +1185,11 @@ con_mln <- function(
   }
   
   # 3. Process Pathway-Pathway Network (Jaccard Index)
-  if (!is.null(pathway_jaccard_file) && file.exists(pathway_jaccard_file)) {
+  if (!is.null(pathway_pathway_file) && file.exists(pathway_pathway_file)) {
     pj_df <- tryCatch(
-      read_input_file(pathway_jaccard_file, file_type = file_type, header = TRUE, stringsAsFactors = FALSE),
+      read_input_file(pathway_pathway_file, file_type = file_type, header = TRUE, stringsAsFactors = FALSE),
       error = function(e) {
-        warning(paste("Error loading Pathway-Pathway Jaccard file '", pathway_jaccard_file, "': ", e$message, ". Skipping this layer.", sep = ""))
+        warning(paste("Error loading Pathway-Pathway Jaccard file '", pathway_pathway_file, "': ", e$message, ". Skipping this layer.", sep = ""))
         return(NULL)
       }
     )
@@ -1272,7 +1271,7 @@ con_mln <- function(
     paste0("multi_layered_network_overall.csv")
   }
   
-  final_output_filepath <- file.path(output_directory, dynamic_output_filename)
+  final_output_filepath <- file.path(output_file, dynamic_output_filename)
   write.csv(final_network_df, final_output_filepath, row.names = FALSE)
   
   return(final_output_filepath)
@@ -1288,31 +1287,28 @@ source("https://raw.githubusercontent.com/bowornpol/NUIM-pipeline/main/code/con_
 
 # Define placeholder file paths and an output directory
 # Replace these with your actual file paths and desired output location
-gsea_results_file_path <- "data/gsea_results_GroupB_vs_GroupA_0.05_BH_signed_log_pvalue.csv" 
-microbe_pathway_file_path <- "data/microbe_pathway_network_GroupA_median.csv" 
-pathway_jaccard_file_path <- "data/pathway_pathway_network_from_gsea_GroupB_vs_GroupA.csv" 
-pathway_metabolite_file_path <- "data/pathway_metabolite_network_GroupA_spearman_0.70_from_gsea_GroupB_vs_GroupA.csv"
-output_directory_mln <- "output_multi_layered_networks"
+gsea_results_file_path <- "data/gsea_results_G1_vs_G2_0.05_BH_signed_log_pvalue.csv" 
+microbe_pathway_file_path <- "data/microbe_pathway_network_G2_median.csv" 
+pathway_pathway_file_path <- "data/pathway_pathway_network_from_gsea_G1_vs_G2.csv" 
+pathway_metabolite_file_path <- "data/pathway_metabolite_network_spearman_0.5_G2_from_gsea_G1_vs_G2.csv"
+output_directory_mln <- "multi_layered_network_results"
 
-# Example 1: Integrate all available layers with GSEA filtering
-cat("Running con_mln with all layers and GSEA filtering...\n")
-mln_output_1 <- con_mln(
+con_mln(
   gsea_results_file = gsea_results_file_path,     # GSEA results file (for pathway filtering and naming)
   microbe_pathway_file = microbe_pathway_file_path, # Microbe-Pathway network file
-  pathway_jaccard_file = pathway_jaccard_file_path, # Pathway-Pathway Jaccard network file
+  pathway_pathway_file = pathway_pathway_file_path, # Pathway-Pathway network file
   pathway_metabolite_file = pathway_metabolite_file_path, # Pathway-Metabolite network file
-  output_directory = output_directory_mln,        # Directory to save the combined network
-  file_type = "csv"                               # Specify input file type: "csv" or "tsv"
+  output_file = output_directory_mln 
 )
 ```
 
 #### **Example output**
 
-The `construct_multi_layered_network` function generates a single CSV file at the specified `output_file` path (e.g., `multi_layered_network_results/multi_layered_network_[class].csv`). This file integrates all specified network layers through connected GSEA-significant pathway nodes.
+The function generates a single CSV file at the specified `output_file` path (e.g., `multi_layered_network_[target class]_from_gsea_[class]_vs_[class].csv`). This file integrates all specified network layers through connected GSEA-significant pathway nodes.
 
-**Example table: `multi_layered_network_G2.csv`**
+**Example table: `multi_layered_network_G2_from_gsea_G1_vs_G2.csv`**
 
-| Feature1      | Feature2      | Edge_Score      | Edge_Type           |
+| Feature1      | Feature2      | edge_score      | edge_type           |
 | :------------ | :------------ | :-------------- | :------------------ |
 | g__Blautia  | ko00010       | 0.85            | Microbe-Pathway     |
 | g__Bifidobacterium  | ko00020       | 0.90            | Microbe-Pathway     |
@@ -1323,8 +1319,8 @@ The `construct_multi_layered_network` function generates a single CSV file at th
 | ...           | ...           | ...             | ...                 |
 
 Each row represents a connection between two features (`Feature1`, `Feature2`).
-- `Edge_Score`: Quantifies the strength or value of this connection between `Feature1` and `Feature2`.
-- `Edge_Type`: Indicates the original network layer from which the connection originated.
+- `edge_score`: The numerical strength or value of the interaction between `Feature1` and `Feature2`.
+- `edge_type`: A categorical label indicating the type of interaction.
 
 ## Module 3: Network Analysis
 
