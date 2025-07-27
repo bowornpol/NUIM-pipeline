@@ -26,11 +26,25 @@ The NUIM pipeline depends on a set of external bioinformatics tools and an R-bas
 |                   | `expm` – for matrix exponential in node prioritization analysis. | 
 |                   | `ggplot2` – for data visualization.           |
 
+#### **Core functions and their utilities**
+
+The following table outlines the core functions of the NUIM pipeline and their primary utilities.
+
+| Function | Utility |
+| :---------------- | :----------------------- |
+| `con_mpn` | Constructs microbe-pathway network. |
+| `con_ppn` | Constructs pathway-pathway network. |
+| `con_pmn` | Constructs pathway-metabolite network. |
+| `con_mln` | Integrates individual networks into a multi-layered network. |
+| `iden_hub` | Identifies key microbial pathways using MCC algorithm. |
+| `find_path` | Identifies the shortest path between the selected source and target nodes using Dijkstra's algorithm. |
+| `node_prior` |  Identifies microbe-associated metabolites using LHD algorithm. |
+
 <p align="center">
   <img src="figures/NUIM_function.png" width="500"/>
 </p>
 
-**NOTE**: Run this function `read_input_file` in your R environment *once* before attempting to execute any other functions in the pipeline. This utility function is crucial for the pipeline as it handles the loading of all input data files, supporting both CSV and TSV formats. 
+**NOTE**: Run the function `read_input_file` in your R environment *once* before attempting to execute any other functions in the pipeline. This utility function is crucial, as it loads all input data files and supports both CSV and TSV formats.
 
 ```R
 source("https://raw.githubusercontent.com/bowornpol/NUIM-pipeline/main/code/read_input_file.R")
