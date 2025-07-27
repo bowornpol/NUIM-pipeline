@@ -459,7 +459,7 @@ con_ppn <- function(
 
   # 4. Set 'condition' factor from 'class' column
   metadata$condition <- as.factor(metadata$class)
-  rownames(metadata) <- metadata$SampleID # Use SampleID for row names
+  rownames(metadata) <- metadata$SampleID #
 
   # 5. Round abundance counts for DESeq2 compatibility and ensure sample order
   gene_abundance_rounded <- round(gene_abundance)
@@ -588,7 +588,7 @@ con_ppn <- function(
 
     gsea_output_path <- file.path(output_file, gsea_output_filename)
     write.csv(gsea_df, gsea_output_path, row.names = FALSE)
-    gsea_output_paths <- c(gsea_output_paths, gsea_output_path) # Store path
+    gsea_output_paths <- c(gsea_output_paths, gsea_output_path) 
   }
 
   # 10. Compute Jaccard indices between pathways within each comparison's GSEA results
@@ -753,10 +753,10 @@ con_pmn <- function(
   }
 
   # Determine gsea_suffix for filename and group processing priority
-  gsea_suffix <- NULL # This is used as the group_name_for_file initially, but is just the target group
+  gsea_suffix <- NULL 
   gsea_target_group_from_filename <- NULL
-  gsea_source_group <- NULL # This is also extracted but not used for filename directly
-  gsea_comparison_group_for_filename <- NULL # Will store the "W0_vs_W2" part
+  gsea_source_group <- NULL 
+  gsea_comparison_group_for_filename <- NULL 
 
   if (!is.null(gsea_results_file)) {
     # Check if the GSEA file exists before trying to read its name
@@ -767,9 +767,9 @@ con_pmn <- function(
       match_result <- stringr::str_match(gsea_basename, "^gsea_results_([^_]+)_vs_([^_]+).*$")
 
       if (!is.na(match_result[1,1])) { # If the full pattern matches successfully
-        gsea_source_group <- match_result[1,2] # e.g., W0
-        gsea_target_group_from_filename <- match_result[1,3] # e.g., W2
-        gsea_comparison_group_for_filename <- paste0(gsea_source_group, "_vs_", gsea_target_group_from_filename) # e.g., W0_vs_W2
+        gsea_source_group <- match_result[1,2] 
+        gsea_target_group_from_filename <- match_result[1,3] 
+        gsea_comparison_group_for_filename <- paste0(gsea_source_group, "_vs_", gsea_target_group_from_filename) 
         gsea_suffix <- gsea_target_group_from_filename # gsea_suffix now holds the target group
       }
     }
@@ -1101,13 +1101,13 @@ con_mln <- function(
   file_type <- match.arg(file_type)
   
   # Create output directory if it doesn't exist
-  if (!dir.exists(output_file)) { # Changed to output_file
+  if (!dir.exists(output_file)) { 
     dir.create(output_file, recursive = TRUE)
   }
   
   # Initialize variables to hold GSEA derived names for filename and filtering
-  gsea_suffix <- NULL # This will store the TARGET group (e.g., "W4")
-  gsea_comparison_group <- NULL # This will store the full comparison (e.g., "W0_vs_W4")
+  gsea_suffix <- NULL 
+  gsea_comparison_group <- NULL 
   gsea_pathways_to_filter <- NULL
   
   # 1. Load GSEA results and extract relevant pathways and filename components
@@ -1294,10 +1294,10 @@ pathway_metabolite_file_path <- "data/pathway_metabolite_network_spearman_0.5_G2
 output_directory_mln <- "multi_layered_network_results"
 
 con_mln(
-  gsea_results_file = gsea_results_file_path,     # GSEA results file (for pathway filtering and naming)
-  microbe_pathway_file = microbe_pathway_file_path, # Microbe-Pathway network file
-  pathway_pathway_file = pathway_pathway_file_path, # Pathway-Pathway network file
-  pathway_metabolite_file = pathway_metabolite_file_path, # Pathway-Metabolite network file
+  gsea_results_file = gsea_results_file_path,    
+  microbe_pathway_file = microbe_pathway_file_path, 
+  pathway_pathway_file = pathway_pathway_file_path, 
+  pathway_metabolite_file = pathway_metabolite_file_path, 
   output_file = output_directory_mln 
 )
 ```
@@ -1334,23 +1334,160 @@ The hub identification uses the Maximal Clique Centrality (MCC) algorithm to ide
 
 | File | Description | Required columns |
 | :------------- | :---------- | :--------------- |
-| `multi_layered_network_*.csv` | Multi-layered network table. | `Feature1`, `Feature2`, `Edge_Score`, `Edge_Type` |
+| `multi_layered_network_*.csv` | Multi-layered network table. | `Feature1`, `Feature2`, `edge_score`, `edge_type` |
 
-The hub identification will be perform on Cytoscape with cytoHubba plugin. User can follow these steps:
+<details>
+<summary>Click to show the full R function</summary>
 
-1. Go to **File → Import → Network from File**, and select your input file (e.g., `multi_layered_network_G2.csv`).
-2. In the import settings, assign **Source Node** to the first column and **Target Node** to the second column.
-3. Open the **cytoHubba** tab in the Control Panel. Under *Target Network*, select your imported network and click **Calculate** under the *Node's Score* section.
-4. In the *Select nodes with Hubba nodes* section, specify the number of top nodes to rank using the **MCC** algorithm, then click **Submit**.
-5. To export the result table, navigate to the **Unassigned Tables** tab, then click **Export Table to File**.
+```r
+iden_hub <- function(
+  multi_layered_network_file,
+  output_file, 
+  file_type = c("csv", "tsv"),
+  top_n_hubs = NULL
+) {
+  file_type <- match.arg(file_type)
+  
+  # Create output directory if it doesn't exist
+  if (!dir.exists(output_file)) { 
+    dir.create(output_file, recursive = TRUE)
+  }
+  
+  # Extract base name from input file for output specificity
+  input_file_base_name <- tools::file_path_sans_ext(basename(multi_layered_network_file))
+  # Clean the base name for use in filenames (e.g., replace non-alphanumeric with underscore)
+  cleaned_input_file_name <- gsub("[^A-Za-z0-9_]", "", input_file_base_name)
+  
+  # 1. Load the multi-layered network file
+  required_cols <- c("Feature1", "Feature2") # Only these are strictly needed for graph structure
+  if (!file.exists(multi_layered_network_file)) {
+    stop("Network file not found: '", multi_layered_network_file, "'")
+  }
+  
+  network_data <- read_input_file(multi_layered_network_file, file_type = file_type, stringsAsFactors = FALSE)
+  if (!all(required_cols %in% colnames(network_data))) {
+    stop("Network file must contain columns: ", paste(required_cols, collapse = ", "))
+  }
+  
+  # 2. Create an undirected graph
+  g <- igraph::graph_from_data_frame(d = network_data[, required_cols], directed = FALSE)
+  
+  # 3. Find all maximal cliques
+  cliques <- tryCatch(
+    igraph::max_cliques(g),
+    error = function(e) {
+      stop(paste("Error finding maximal cliques: ", e$message, ". This can be computationally intensive for large graphs.", sep = ""))
+    }
+  )
+  
+  # 4. Calculate MCC scores for each node based on the provided formula
+  # Initialize MCC scores to 0 for all nodes
+  mcc_scores <- setNames(numeric(igraph::vcount(g)), igraph::V(g)$name)
+  
+  # Sum (clique_size - 1)! for all maximal cliques containing the node
+  for (clique_nodes_indices in cliques) {
+    clique_size <- length(clique_nodes_indices)
+    clique_score <- factorial(clique_size - 1) # factorial(0) = 1, factorial(1) = 1
+    for (node_index in clique_nodes_indices) {
+      node_name <- igraph::V(g)$name[node_index]
+      mcc_scores[node_name] <- mcc_scores[node_name] + clique_score
+    }
+  }
+  
+  # Pre-calculate degrees and local clustering coefficients
+  node_degrees <- igraph::degree(g)
+  # transitivity(type="local") returns NaN for nodes with degree < 2.
+  # We will handle these cases based on the definition "no edge between neighbors".
+  node_clustering_coeffs <- igraph::transitivity(g, type = "local", vids = igraph::V(g))
+  names(node_clustering_coeffs) <- igraph::V(g)$name
+  
+  # Apply the special case: If there is no edge between the neighbors of the node v, MCC(v) = degree(v)
+  for (node_name in igraph::V(g)$name) {
+    current_degree <- node_degrees[node_name]
+    
+    # Determine if "no edge between neighbors" condition is met
+    is_no_edge_between_neighbors <- FALSE
+    if (current_degree == 0) {
+      # Isolated node: no neighbors, so no edges between them. MCC should be 0 (its degree).
+      is_no_edge_between_neighbors <- TRUE
+    } else if (current_degree == 1) {
+      # Node with one neighbor: trivially, no edges between multiple neighbors. MCC should be 1 (its degree).
+      is_no_edge_between_neighbors <- TRUE
+    } else { # current_degree >= 2
+      # For nodes with 2 or more neighbors, check if local clustering coefficient is 0
+      if (!is.na(node_clustering_coeffs[node_name]) && node_clustering_coeffs[node_name] == 0) {
+        is_no_edge_between_neighbors <- TRUE
+      }
+    }
+    
+    # If the special condition is met, override the MCC score with the node's degree
+    if (is_no_edge_between_neighbors) {
+      mcc_scores[node_name] <- current_degree
+    }
+  }
+  
+  # 5. Create a data frame of results and rank
+  hub_results_df <- dplyr::arrange(
+    data.frame(
+      Node = names(mcc_scores),
+      MCC_score = mcc_scores,
+      stringsAsFactors = FALSE
+    ),
+    dplyr::desc(MCC_score) # Sort in descending order of MCC_score
+  )
+  
+  # 6. Apply top_n_hubs filter if specified
+  if (!is.null(top_n_hubs) && is.numeric(top_n_hubs) && top_n_hubs > 0) {
+    if (top_n_hubs > nrow(hub_results_df)) {
+      warning("Requested top_n_hubs (", top_n_hubs, ") is greater than total nodes (", nrow(hub_results_df), "). Returning all nodes.")
+    } else {
+      hub_results_df <- head(hub_results_df, n = top_n_hubs)
+    }
+  }
+  
+  # 7. Save the results
+  output_filename <- paste0("hub_mcc_", cleaned_input_file_name,
+                            if(!is.null(top_n_hubs)) paste0("_top", top_n_hubs) else "", ".csv")
+  output_filepath <- file.path(output_file, output_filename)
+  write.csv(hub_results_df, output_filepath, row.names = FALSE)
+  
+  return(invisible(NULL))
+}
+```
+
+#### **Example usage**
+
+```r
+source("https://raw.githubusercontent.com/bowornpol/NUIM-pipeline/main/code/iden_hub.R")
+
+# Define placeholder file paths and an output directory
+# Replace these with your actual file paths and desired output location
+multi_layered_network_file_path <- "data/multi_layered_network_G2_from_gsea_G1_vs_G2.csv"
+output_directory_hi <- "hub_identification_result"
+
+iden_hub(
+  multi_layered_network_file = multi_layered_network_file_path, 
+  output_file = output_directory_hi,          
+  top_n_hubs = 5  # Specify the number of top hub nodes to extract
+)
+```
 
 #### **Example output**
 
-The example output below shows the result of applying the MCC algorithm using cytoHubba plugin in Cytoscape. The top-ranked hub pathways are highlighted in the network view and listed in a results table, along with various centrality scores used to assess their importance.
+The function generates a single CSV file named `hub_mcc_multi_layered_network_*_[top_n_hubs].csv`. This file is saved in the specified `output_file`.
 
-<p align="center">
-  <img src="figures/cytohubba.png" width="850"/>
-</p>
+**Example table: `hub_mcc_multi_layered_network_G2_from_gsea_W1_vs_G2_top5.csv`**
+
+| Node     | MCC_score    | 
+|------------|-----------|
+| ko00010    | 546   | 
+| ko00020    | 540   | 
+| ko00030    | 460   | 
+| ko00040    | 375   | 
+| ko00050    | 320   | 
+
+- `Node`: The identifiers of the nodes (e.g., pathway IDs) that are identified as hubs.
+- `MCC_score`: TThe Maximal Clique Centrality score for the node. A higher MCC score indicates greater centrality and importance within the network.
 
 ### <ins>(2) Pathfinding</ins>
 
@@ -1360,105 +1497,88 @@ The pathfinding uses the Dijkstra's algorithm to identify the shortest path betw
 
 | File | Description | Required columns |
 | :------------- | :---------- | :--------------- |
-| `multi_layered_network_*.csv` | Multi-layered network table. | `Feature1`, `Feature2`, `Edge_Score`, `Edge_Type` |
+| `multi_layered_network_*.csv` | Multi-layered network table. | `Feature1`, `Feature2`, `edge_score`, `edge_type` |
 
 <details>
 <summary>Click to show the full R function</summary>
 
 ```r
-library(igraph)
-library(dplyr)
-library(stringr)
-
-pathfinding <- function(
+find_path <- function(
   multi_layered_network_file,
   source_node,
   target_node,
-  output_directory
+  output_file, 
+  file_type = c("csv", "tsv")
 ) {
-  message("Starting shortest pathfinding using Dijkstra's algorithm.")
-
+  file_type <- match.arg(file_type)
+  
   # Create output directory if it doesn't exist
-  if (!dir.exists(output_directory)) {
-    dir.create(output_directory, recursive = TRUE)
-    message("Created output directory: ", output_directory)
-  } else {
-    message("Output directory already exists: ", output_directory)
+  if (!dir.exists(output_file)) {
+    dir.create(output_file, recursive = TRUE)
   }
   
   # 1. Load network
-  message("\n1. Loading multi-layered network from: ", multi_layered_network_file)
-  
-  required_cols <- c("Feature1", "Feature2", "Edge_Score", "Edge_Type")
+  required_cols <- c("Feature1", "Feature2", "edge_score", "edge_type")
   if (!file.exists(multi_layered_network_file)) {
     stop("Network file not found: '", multi_layered_network_file, "'")
   }
   
-  network_data <- read.csv(multi_layered_network_file, stringsAsFactors = FALSE)
+  network_data <- read_input_file(multi_layered_network_file, file_type = file_type, stringsAsFactors = FALSE)
   if (!all(required_cols %in% colnames(network_data))) {
     stop("Network file must contain columns: ", paste(required_cols, collapse = ", "))
   }
-  message("  Successfully loaded and validated network file.")
   
-  if (!is.numeric(network_data$Edge_Score)) {
-    stop("Column 'Edge_Score' must be numeric.")
-  }
+  # Ensure edge_score is numeric
+  network_data$edge_score <- as.numeric(network_data$edge_score)
   
-  # Convert Edge_Score to absolute
-  network_data$Edge_Score <- abs(network_data$Edge_Score)
+  # --- Convert edge_score to absolute value before weight transformation ---
+  network_data$edge_score_abs <- abs(network_data$edge_score)
   
   # 2. Create graph directly with edge attributes
-  message("  Creating graph and assigning weights.")
-  g <- graph_from_data_frame(d = network_data, directed = FALSE)
+  g <- igraph::graph_from_data_frame(d = network_data, directed = FALSE)
   
-  # Apply weight transformation
-  E(g)$weight <- sapply(E(g)$Edge_Score, function(w) {
+  # Apply weight transformation using the *absolute* edge_score
+  igraph::E(g)$weight <- sapply(igraph::E(g)$edge_score_abs, function(w) {
     if (is.na(w)) {
-      Inf
-    } else if (w < 1) {
-      1 / w
+      Inf # Treat NA scores as infinite weight (unreachable)
+    } else if (w == 0) {
+      0.001
     } else if (w == 1) {
       1 / (w + 0.1)
-    } else {
-      w
+    } else { 
+      1 / w
     }
   })
   
   # 3. Validate nodes
-  message("\n2. Validating source and target nodes against the network.")
-  if (!source_node %in% V(g)$name) stop("Source node not found in network: ", source_node)
-  if (!target_node %in% V(g)$name) stop("Target node not found in network: ", target_node)
-  message("  Both source and target nodes found.")
+  if (!source_node %in% igraph::V(g)$name) stop("Source node not found in network: ", source_node)
+  if (!target_node %in% igraph::V(g)$name) stop("Target node not found in network: ", target_node)
   
   # 4. Find shortest path
-  message("\n3. Finding shortest path from '", source_node, "' to '", target_node, "'...")
-  result <- shortest_paths(g, from = source_node, to = target_node, weights = E(g)$weight, output = "both")
+  result <- igraph::shortest_paths(g, from = source_node, to = target_node, weights = igraph::E(g)$weight, output = "both")
   
   path_vertices <- result$vpath[[1]]
   path_edges <- result$epath[[1]]
   
   if (length(path_vertices) > 1 && length(path_edges) > 0) {
-    message("  Path found with ", length(path_edges), " steps.")
-    
     edge_df <- igraph::as_data_frame(g, what = "edges")[path_edges, ]
-    path_df <- edge_df %>%
-      select(Source = from, Target = to, Original_Edge_Score = Edge_Score, Transformed_Weight = weight, Edge_Type)
+    path_df <- dplyr::select(edge_df,
+                             Source = from,
+                             Target = to,
+                             original_edge_score = edge_score,
+                             transformed_weight = weight,
+                             edge_type = edge_type)
     
+    # Sanitize node names for filename
     safe_from <- gsub("[^A-Za-z0-9_.-]", "_", source_node)
     safe_to <- gsub("[^A-Za-z0-9_.-]", "_", target_node)
-    output_file <- file.path(output_directory, paste0("path_", safe_from, "_to_", safe_to, ".csv"))
+    output_filepath <- file.path(output_file, paste0("path_", safe_from, "_to_", safe_to, ".csv"))
     
-    write.csv(path_df, output_file, row.names = FALSE)
-    message("  Saved path to: ", output_file)
-    
-    invisible(list(path_df = path_df))
-
-    message("Node prioritization complete.")
-    return(invisible(NULL))
+    write.csv(path_df, output_filepath, row.names = FALSE)
   } else {
-    message("  No finite path found between source and target.")
-    invisible(NULL)
+    # No finite path found, do not write a file.
   }
+  return(invisible(NULL))
 }
 ```
 
@@ -1467,45 +1587,43 @@ pathfinding <- function(
 #### **Example usage**
 
 ```r
-source("https://raw.githubusercontent.com/bowornpol/NUIM-pipeline/main/code/pathfinding.R")
+source("https://raw.githubusercontent.com/bowornpol/NUIM-pipeline/main/code/find_path.R")
 
-# Define the full path and filename for your input CSV file
-my_multi_layered_network_file <- "multi_layered_network_results/multi_layered_network_G2.csv" 
+# Define placeholder file paths and an output directory
+# Replace these with your actual file paths and desired output location
+multi_layered_network_file_path <- "data/multi_layered_network_G2_from_gsea_G1_vs_G2.csv"
+output_directory_pf <- "pathfinding_result"
 
 # Define the source node 
-my_source_node <- "g__Megamonas"
+source_node <- "g__Megamonas"
 
 # Define the target node 
-my_target_node <- "acetate"
+target_node <- "acetate"
 
-# Define the full path for your output directory
-my_output_directory <- "pathfinding_results"
-
-# Call the function with your specific file paths
 pathfinding(
-  multi_layered_network_file = my_multi_layered_network_file, 
+  multi_layered_network_file = multi_layered_network_file_path, 
   source_node = my_source_node,                            
   target_node = my_target_node,
-  output_directory = my_output_directory
+  output_file = output_directory_pf
 )
 ```
 
 #### **Example output**
 
-The `pathfinding` function generates a single CSV file named `path_[source]_to_[target].csv` for the shortest path found between the specified `source_node` and `target_node`. This file is saved in the specified `output_directory`.
+The function generates a single CSV file named `path_[source]_to_[target].csv` for the shortest path found between the specified `source_node` and `target_node`. This file is saved in the specified `output_file`.
 
 **Example table: `path_g_Megamonas_to_acetate.csv`**
 
-| Source     | Target    | Original_Edge_Score | Transformed_Weight | Edge_Type           |
+| Source     | Target    | original_edge_score | transformed_weight | edge_type           |
 |------------|-----------|----------------------|---------------------|----------------------|
 | g_Megamonas  | ko00540   | 0.45                 | 2.21                | Microbe-Pathway      |
 | ko00540    | acetate   | 0.59                 | 1.70                | Pathway-Metabolite   |
 
 Each row in the ``path_<source>_to_<target>.csv` file represents an individual edge along the route from the source node to the target node.
 - `Source`, `Target`: The two nodes connected by the edge.
-- `Original_Edge_Score`: The input edge score from the multi-layered network.
-- `Transformed_Weight`: The cost used for Dijkstra’s algorithm.
-- `Edge_Type`: Indicates the original network layer from which the connection originated.
+- `original_edge_score`: The input edge score from the multi-layered network.
+- `transformed_weight`: The cost used for Dijkstra’s algorithm.
+- `edge_type`: Indicates the original network layer from which the connection originated.
 
 ### <ins>(3) Node prioritization</ins>
 
