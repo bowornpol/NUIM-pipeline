@@ -6,7 +6,7 @@ We developed NUIM, a modular, network-based framework for integrating microbiome
   <img src="figures/pipeline_overall.png" width="500"/>
 </p>
 
-#### **Required tools and R packages**
+## Required tools, R packages, and core functions for NUIM
 
 The NUIM pipeline depends on a set of external bioinformatics tools and an R-based environment for network-based analyses. The versions of these tools and packages may vary depending on the user. The following table details the requirements: 
 
@@ -14,7 +14,6 @@ The NUIM pipeline depends on a set of external bioinformatics tools and an R-bas
 | :---------------- | :----------------------- |
 | **External tools**| `QIIME2` – for microbiome data processing. |
 |                   | `PICRUSt2` – for functional prediction.     |
-|                   | `Cytoscape` + `cytoHubba` plugin – for hub identification. | 
 | **R packages**    | `dplyr` – for data manipulation.              |
 |                   | `tidyr` – for data reshaping.                 |
 |                   | `stats` – for statistical testing.            |
@@ -26,6 +25,29 @@ The NUIM pipeline depends on a set of external bioinformatics tools and an R-bas
 |                   | `igraph` – for handling network data and pathfinding analysis. |
 |                   | `expm` – for matrix exponential in node prioritization analysis. | 
 |                   | `ggplot2` – for data visualization.           |
+
+[i will write about R function used in NUIM (`con_mpn`, `con_ppn`, `con_pmn`, `con_mln`, `iden_hub`, `find_path`, `node_prior`)]
+
+**NOTE**: Run this function `read_input_file` in your R environment *once* before attempting to execute any other functions in the pipeline (e.g., `con_mpn`, `con_ppn`, `con_pmn`, `con_mln`, `iden_hub`, `find_path`, `node_prior`). This utility function is crucial for the pipeline as it handles the loading of all input data files, supporting both CSV and TSV formats. It acts as a foundational component, ensuring that subsequent analysis functions can correctly access and process the data.
+
+```R
+read_input_file <- function(file_path, file_type = c("csv", "tsv"), ...) {
+  file_type <- match.arg(file_type)
+
+  if (!file.exists(file_path)) {
+    stop(paste("File not found:", file_path))
+  }
+
+  if (file_type == "csv") {
+    data <- read.csv(file_path, ...)
+  } else if (file_type == "tsv") {
+    data <- read.delim(file_path, ...)
+  } else {
+    stop("Invalid file_type. Must be 'csv' or 'tsv'.")
+  }
+  return(data)
+}
+```
 
 ## Module 1: Data preparation and processing
 
