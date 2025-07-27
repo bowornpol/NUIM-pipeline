@@ -28,7 +28,7 @@ The NUIM pipeline depends on a set of external bioinformatics tools and an R-bas
 
 [i will write about R function used in NUIM (`con_mpn`, `con_ppn`, `con_pmn`, `con_mln`, `iden_hub`, `find_path`, `node_prior`)]
 
-**NOTE**: Run this function `read_input_file` in your R environment *once* before attempting to execute any other functions in the pipeline (e.g., `con_mpn`, `con_ppn`, `con_pmn`, `con_mln`, `iden_hub`, `find_path`, `node_prior`). This utility function is crucial for the pipeline as it handles the loading of all input data files, supporting both CSV and TSV formats. It acts as a foundational component, ensuring that subsequent analysis functions can correctly access and process the data.
+**NOTE**: Run this function `read_input_file` in your R environment *once* before attempting to execute any other functions in the pipeline (e.g., `con_mpn`, `con_ppn`, `con_pmn`, `con_mln`, `iden_hub`, `find_path`, `node_prior`). This utility function is crucial for the pipeline as it handles the loading of all input data files, supporting both CSV and TSV formats. 
 
 ```R
 read_input_file <- function(file_path, file_type = c("csv", "tsv"), ...) {
