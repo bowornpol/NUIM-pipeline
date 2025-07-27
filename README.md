@@ -29,22 +29,7 @@ The NUIM pipeline depends on a set of external bioinformatics tools and an R-bas
 **NOTE**: Run this function `read_input_file` in your R environment *once* before attempting to execute any other functions in the pipeline. This utility function is crucial for the pipeline as it handles the loading of all input data files, supporting both CSV and TSV formats. 
 
 ```R
-read_input_file <- function(file_path, file_type = c("csv", "tsv"), ...) {
-  file_type <- match.arg(file_type)
-
-  if (!file.exists(file_path)) {
-    stop(paste("File not found:", file_path))
-  }
-
-  if (file_type == "csv") {
-    data <- read.csv(file_path, ...)
-  } else if (file_type == "tsv") {
-    data <- read.delim(file_path, ...)
-  } else {
-    stop("Invalid file_type. Must be 'csv' or 'tsv'.")
-  }
-  return(data)
-}
+source("https://raw.githubusercontent.com/bowornpol/NUIM-pipeline/main/code/read_input_file.R")
 ```
 
 ## Module 1: Data preparation and processing
