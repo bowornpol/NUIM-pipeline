@@ -213,111 +213,90 @@ The microbe–pathway network is constructed from pathway contribution data, wit
 
 | File                    | Description                                                                                                                                           | Required columns                               |
 | :---------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------- |
-| `path_abun_contrib.csv` | Pathway contribution data from PICRUSt2.                                                                                                              | `SampleID`, `FeatureID`, `FunctionID`, `taxon_function_abun` |
-| `sample_metadata.csv`   | Sample metadata. Required for group-specific analysis. If not provided or `class` column is missing, data will be processed as one 'overall' group. | `SampleID`, `class`                            |
-| `taxonomy.csv`          | Taxonomy annotations mapping `FeatureID` to taxonomic name (`TaxonID`) from QIIME2.                                                                               | `FeatureID`, `TaxonID`                         |
+| `path_abun_contrib.tsv` | Pathway contribution data from PICRUSt2.                                                                                                              | `SampleID`, `FeatureID`, `FunctionID`, `taxon_function_abun` |
+| `sample_metadata.*`   | Sample metadata. Required for group-specific analysis. If not provided or `class` column is missing, data will be processed as one 'overall' group. | `SampleID`, `class`                            |
+| `taxonomy.tsv`          | Taxonomy annotations mapping `FeatureID` to taxonomic name (`TaxonID`) from QIIME2.                                                                               | `FeatureID`, `TaxonID`                         |
 
 <details>
 <summary>Click to show the full R function</summary>
 
 ```r
-library(dplyr)
-
-construct_microbe_pathway_network <- function(
+con_mpn <- function(
   contrib_file,
   metadata_file,
   taxonomy_file,
-  output_file, 
+  output_file,
+  file_type = c("csv", "tsv"),
   filtering = c("unfiltered", "mean", "median", "top10%", "top25%", "top50%", "top75%")
 ) {
+  file_type <- match.arg(file_type)
   filtering <- match.arg(filtering)
-  message("Starting microbe-pathway network construction with filtering: ", filtering)
 
-  # Create output directory if it doesn't exist
   if (!dir.exists(output_file)) {
     dir.create(output_file, recursive = TRUE)
-    message("Created output directory: ", output_file)
-  } else {
-    message("Output directory already exists: ", output_file)
   }
-  
-  message("Loading data...")
+
   contrib <- tryCatch(
-    read.csv(contrib_file, stringsAsFactors = FALSE),
+    read_input_file(contrib_file, file_type = file_type, stringsAsFactors = FALSE),
     error = function(e) stop(paste("Error loading contribution file: ", e$message))
   )
   metadata <- tryCatch(
-    read.csv(metadata_file, stringsAsFactors = FALSE),
+    read_input_file(metadata_file, file_type = file_type, stringsAsFactors = FALSE),
     error = function(e) stop(paste("Error loading metadata file: ", e$message))
   )
   taxonomy <- tryCatch(
-    read.csv(taxonomy_file, stringsAsFactors = FALSE),
+    read_input_file(taxonomy_file, file_type = file_type, stringsAsFactors = FALSE),
     error = function(e) stop(paste("Error loading taxonomy file: ", e$message))
   )
-  
-  message("Dim contrib: ", paste(dim(contrib), collapse = "x"), " | Cols: ", paste(colnames(contrib), collapse = ", "))
-  message("Dim metadata: ", paste(dim(metadata), collapse = "x"), " | Cols: ", paste(colnames(metadata), collapse = ", "))
-  message("Dim taxonomy: ", paste(dim(taxonomy), collapse = "x"), " | Cols: ", paste(colnames(taxonomy), collapse = ", "))
-  
+
   if (!"class" %in% colnames(metadata)) {
-    message("'class' column not found in metadata. Creating a default 'all' class.")
     metadata$class <- "all"
   } else {
-    message("'class' column found in metadata.")
     metadata$class <- as.character(metadata$class)
   }
-  
+
   contrib$SampleID <- as.character(contrib$SampleID)
   metadata$SampleID <- as.character(metadata$SampleID)
   contrib$FeatureID <- as.character(contrib$FeatureID)
   taxonomy$FeatureID <- as.character(taxonomy$FeatureID)
   contrib$FunctionID <- as.character(contrib$FunctionID)
   taxonomy$TaxonID <- as.character(taxonomy$TaxonID)
-  
-  message("Merging contribution and metadata...")
+
   merged <- merge(contrib, metadata, by = "SampleID", all.x = TRUE)
-  message("  Dim after merging contrib and metadata: ", paste(dim(merged), collapse = "x"))
   if (nrow(merged) == 0) stop("Merging contribution and metadata resulted in an empty data frame.")
-  
+
   cols_to_keep_from_taxonomy <- c("FeatureID", "TaxonID")
   if (!all(cols_to_keep_from_taxonomy %in% colnames(taxonomy))) {
     stop("Missing expected columns in taxonomy file: ", paste(setdiff(cols_to_keep_from_taxonomy, colnames(taxonomy)), collapse = ", "))
   }
-  taxonomy_for_merge <- taxonomy %>% select(all_of(cols_to_keep_from_taxonomy))
-  
-  message("Merging with taxonomy data...")
+  taxonomy_for_merge <- dplyr::select(taxonomy, dplyr::all_of(cols_to_keep_from_taxonomy))
+
   merged <- merge(merged, taxonomy_for_merge, by = "FeatureID", all.x = TRUE)
-  message("  Dim after merging taxonomy: ", paste(dim(merged), collapse = "x"))
   if (!"taxon_function_abun" %in% colnames(merged)) {
     stop("Column 'taxon_function_abun' not found after merging.")
   }
   merged$taxon_function_abun <- as.numeric(merged$taxon_function_abun)
-  
+
   unique_classes_clean <- unique(merged$class)
   unique_classes_clean <- unique_classes_clean[!is.na(unique_classes_clean)]
-  message("Unique classes identified for processing: ",
-          if (length(unique_classes_clean) > 0) paste(sort(unique_classes_clean), collapse = ", ") else "None")
-  
+
   if (length(unique_classes_clean) == 0) {
     warning("No valid (non-NA) classes found. Exiting.")
-    return(invisible(NULL))
+    return(character(0))
   }
-  
+
+  microbe_pathway_output_paths <- c()
+
   for (current_class in unique_classes_clean) {
-    message("\nProcessing class: '", current_class, "'")
-    merged_class <- merged %>% filter(class == current_class)
-    message("  Dim merged_class: ", paste(dim(merged_class), collapse = "x"))
+    merged_class <- dplyr::filter(merged, class == current_class)
     if (nrow(merged_class) == 0) next
-    
-    message("  Aggregating taxon-function abundance...")
+
     taxon_function_total_class <- aggregate(
       taxon_function_abun ~ FunctionID + TaxonID,
       data = merged_class, sum, na.rm = TRUE
     )
-    message("  Dim aggregated data: ", paste(dim(taxon_function_total_class), collapse = "x"))
     if (nrow(taxon_function_total_class) == 0) next
-    
-    message("  Calculating relative contributions...")
+
     function_total_class <- aggregate(
       taxon_function_abun ~ FunctionID,
       data = taxon_function_total_class, sum, na.rm = TRUE
@@ -327,10 +306,8 @@ construct_microbe_pathway_network <- function(
     taxon_function_total_class$relative_contribution <- with(taxon_function_total_class,
                                                              ifelse(total_abundance_all_taxa == 0, 0, taxon_function_abun / total_abundance_all_taxa)
     )
-    message("  Dim after contribution calc: ", paste(dim(taxon_function_total_class), collapse = "x"))
-    
+
     if (filtering != "unfiltered") {
-      message("  Applying filtering: ", filtering)
       if (filtering %in% c("mean", "median")) {
         FUN_used <- if (filtering == "mean") mean else median
         threshold_df <- aggregate(relative_contribution ~ FunctionID,
@@ -341,32 +318,37 @@ construct_microbe_pathway_network <- function(
         taxon_function_total_class <- subset(taxon_function_total_class, relative_contribution >= threshold | is.na(threshold))
       } else {
         percent_map <- c("top10%" = 0.10, "top25%" = 0.25, "top50%" = 0.50, "top75%" = 0.75)
-        top_percent <- percent_map[filtering]
-        taxon_function_total_class <- taxon_function_total_class %>%
-          group_by(FunctionID) %>% arrange(desc(relative_contribution)) %>%
-          mutate(rank = row_number(), n_taxa = n(), cutoff = pmax(ceiling(top_percent * n_taxa), 1)) %>%
-          filter(rank <= cutoff) %>%
-          ungroup() %>% select(-rank, -n_taxa, -cutoff)
+        taxon_function_total_class <- dplyr::ungroup(
+          dplyr::filter(
+            dplyr::mutate(
+              dplyr::arrange(
+                dplyr::group_by(taxon_function_total_class, FunctionID),
+                dplyr::desc(relative_contribution)
+              ),
+              rank = dplyr::row_number(),
+              n_taxa = dplyr::n(),
+              cutoff = pmax(ceiling(percent_map[filtering] * dplyr::n()), 1)
+            ),
+            rank <= cutoff
+          )
+        )
+        taxon_function_total_class <- dplyr::select(taxon_function_total_class, -rank, -n_taxa, -cutoff)
       }
-      message("  Dim after filtering: ", paste(dim(taxon_function_total_class), collapse = "x"))
       if (nrow(taxon_function_total_class) == 0) {
-        message("  No data left after filtering. Skipping.")
         next
       }
     }
-    
-    message("  Saving results for class: ", current_class)
+
     taxon_function_total_class <- taxon_function_total_class[
       order(taxon_function_total_class$FunctionID, -taxon_function_total_class$relative_contribution),
     ]
     file_suffix <- gsub("%", "", filtering)
     full_output_path <- file.path(output_file, paste0("microbe_pathway_network_", current_class, "_", file_suffix, ".csv"))
     write.csv(taxon_function_total_class, full_output_path, row.names = FALSE)
-    message("  File saved to: ", full_output_path)
+    microbe_pathway_output_paths <- c(microbe_pathway_output_paths, full_output_path)
   }
-  
-  message("Microbe-pathway network construction complete.")
-  return(invisible(NULL))
+
+  return(microbe_pathway_output_paths)
 }
 ```
 </details> 
@@ -374,14 +356,21 @@ construct_microbe_pathway_network <- function(
 #### **Example usage**
 
 ```r
-source("https://raw.githubusercontent.com/bowornpol/NUIM-pipeline/main/code/construct_microbe_pathway_network.R")
+source("https://raw.githubusercontent.com/bowornpol/NUIM-pipeline/main/code/con_mpn.R")
 
-construct_microbe_pathway_network(
-  contrib_file = "path_abun_contrib.csv",      
-  metadata_file = "sample_metadata.csv",      
-  taxonomy_file = "taxonomy.csv",      
-  output_file = "microbe_pathway_network_results", # Output directory for results
-  filtering = "median" # User can choose from "unfiltered", "mean", "median", "top10%", "top25%", "top50%", "top75%"
+# Define placeholder file paths and an output directory
+# Replace these with your actual file paths and desired output location
+contrib_file_path <- "data/path_abun_contrib.tsv"
+metadata_file_path <- "data/sample_metadata.csv"
+taxonomy_file_path <- "data/taxonomy.tsv"
+output_directory_mpn <- "microbe_pathway_network_results"
+
+con_mpn(
+  contrib_file = contrib_file_path,
+  metadata_file = metadata_file_path,
+  taxonomy_file = taxonomy_file_path,
+  output_file = output_directory_mpn,
+  filtering = "median" # Filtering method: "unfiltered", "mean", "median", "top10%", "top25%", "top50%", "top75%"
 )
 ```
 
@@ -391,7 +380,7 @@ The function generates a directory (e.g., `microbe_pathway_network_results`), wh
 
 **Example table: `microbe_pathway_network_G2_median.csv`**
 
-| FunctionID | TaxonID            | total_abundance | total_abundance_all_taxa | relative_contribution | median_contribution |
+| FunctionID | TaxonID            | taxon_function_abun | total_abundance_all_taxa | relative_contribution | threshold |
 |:-----------|:-------------------|:----------------|:-------------------------|:----------------------|:--------------------|
 | ko00365    | g__Bilophila       | 44.5            | 44.5                     | 1.0                   | 1.0                 |
 | ko00571    | g__Bifidobacterium | 1073.7          | 1076.3                   | 0.97                 | 0.5                 |
@@ -399,9 +388,10 @@ The function generates a directory (e.g., `microbe_pathway_network_results`), wh
 | ...        | ...                | ...             | ...                      | ...                   | ...                 |
 
 Each row represents a weighted edge linking a microbial taxon (`TaxonID`) to a functional pathway (`FunctionID`) with the strength of the edge defined by the `relative_contribution`.
-- `total_abundance`: The absolute contribution of a given taxon to a pathway summed across all samples.  
+- `taxon_function_abun`: The absolute contribution of a given taxon to a pathway summed across all samples for the specific class.
 - `total_abundance_all_taxa`: The total combined contribution of all taxa to the same pathway, used as a baseline for normalization.
-- `median_contribution` (and other thresholds like mean or top%) are shown in the table to indicate the filtering cutoff used for each pathway. This helps explain which taxa passed the filtering based on their relative contribution.
+- `relative_contribution`: This column quantifies the proportional contribution of a specific microbial taxon to a given functional pathway.
+- `threshold` (and other thresholds like mean or top%) are shown in the table to indicate the filtering cutoff used for each pathway. This helps explain which taxa passed the filtering based on their relative contribution.
 
 ### <ins>STEP 2: Pathway–pathway network construction</ins>
 
@@ -411,65 +401,50 @@ The pathway–pathway network is constructed using pathways identified as signif
 
 | File                        | Description                                                                 | Required Columns                                           |
 | :-------------------------- | :-------------------------------------------------------------------------- | :--------------------------------------------------------- |
-| `pred_metagenome_unstrat.csv` | Gene abundance data from PICRUSt2.                                          | `SampleID`, Gene/KO IDs (as columns)                       |
-| `sample_metadata.csv`       | Sample metadata with group or condition information.                        | `SampleID`, `class`                                        |
-| `pathway_gene_map.csv`      | Maps pathway IDs to their associated gene/KO IDs.                           | **First column**: pathway IDs; **Other columns**: gene/KO IDs |
+| `pred_metagenome_unstrat.tsv` | Gene abundance data from PICRUSt2.                                          | **Rows**: gene/KO IDs (first column, will become row names). **Columns**: Sample IDs (as column headers) |
+| `sample_metadata.*`       | Sample metadata with group or condition information.                        | `SampleID`, `class`                                        |
+| `pathway_gene_map.tsv`      | Maps pathway IDs to their associated gene/KO IDs.                           | **First column**: pathway IDs; **Other columns**: gene/KO IDs |
 
 <details>
 <summary>Click to show the full R function</summary>
 
 ```r
-library(DESeq2)
-library(clusterProfiler)
-library(dplyr)
-library(tidyr)
-set.seed(123) # Set seed for reproducibility
-
-construct_pathway_pathway_network <- function(
+con_ppn <- function(
   abundance_file,
   metadata_file,
   map_file,
   output_file,
+  file_type = c("csv", "tsv"),
   pvalueCutoff,
   pAdjustMethod = c("fdr", "holm", "hochberg", "hommel", "bonferroni", "BH", "BY", "none"),
   rank_by = c("signed_log_pvalue", "log2FoldChange")
 ) {
   # Validate inputs
+  file_type <- match.arg(file_type)
   pAdjustMethod <- match.arg(pAdjustMethod)
-  rank_by <- match.arg(rank_by) # Validate new parameter
-  
-  message("Starting pathway-pathway network construction.")
-  message("Using p-value cutoff: ", pvalueCutoff, " and p-adjustment method: ", pAdjustMethod, ".")
-  message("Genes will be ranked by: ", rank_by, ".") # Status message for ranking method
-  
+  rank_by <- match.arg(rank_by)
+
   # Create output directory if it doesn't exist
   if (!dir.exists(output_file)) {
     dir.create(output_file, recursive = TRUE)
-    message("Created output directory: ", output_file)
-  } else {
-    message("Output directory already exists: ", output_file)
   }
-  
+
   # 1. Load abundance data from provided file
-  message("1. Loading abundance data from: ", abundance_file)
   gene_abundance <- tryCatch(
-    read.csv(abundance_file, header = TRUE, row.names = 1, stringsAsFactors = FALSE),
+    read_input_file(abundance_file, file_type = file_type, header = TRUE, row.names = 1, stringsAsFactors = FALSE),
     error = function(e) {
       stop(paste("Error loading abundance file '", abundance_file, "': ", e$message, sep = ""))
     }
   )
-  message("    Loaded abundance data. Dimensions: ", paste(dim(gene_abundance), collapse = "x"))
-  
+
   # 2. Load sample metadata
-  message("2. Loading sample metadata from: ", metadata_file)
   metadata <- tryCatch(
-    read.csv(metadata_file, header = TRUE, stringsAsFactors = FALSE),
+    read_input_file(metadata_file, file_type = file_type, header = TRUE, stringsAsFactors = FALSE),
     error = function(e) {
       stop(paste("Error loading metadata file '", metadata_file, "': ", e$message, sep = ""))
     }
   )
-  message("    Loaded metadata. Dimensions: ", paste(dim(metadata), collapse = "x"))
-  
+
   # Ensure the correct SampleID and class columns are present
   if (!"SampleID" %in% colnames(metadata)) {
     stop("The 'sample_metadata.csv' file must contain a 'SampleID' column.")
@@ -477,146 +452,132 @@ construct_pathway_pathway_network <- function(
   if (!"class" %in% colnames(metadata)) {
     stop("The 'sample_metadata.csv' file must contain a 'class' column for group definition.")
   }
-  
+
   # 3. Filter metadata samples present in abundance data
-  message("3. Filtering metadata to match samples in abundance data...")
   sample_ids <- colnames(gene_abundance)
-  initial_metadata_rows <- nrow(metadata)
-  metadata <- metadata %>% filter(SampleID %in% sample_ids)
-  if (nrow(metadata) == 0) {
-    stop("No matching samples found between abundance data and metadata after filtering.")
-  }
-  message("    Filtered metadata. Kept ", nrow(metadata), " out of ", initial_metadata_rows, " samples.")
-  
+  metadata <- dplyr::filter(metadata, SampleID %in% sample_ids)
+
   # 4. Set 'condition' factor from 'class' column
-  message("4. Setting 'condition' factor from 'class' column and aligning data...")
   metadata$condition <- as.factor(metadata$class)
   rownames(metadata) <- metadata$SampleID # Use SampleID for row names
-  
+
   # 5. Round abundance counts for DESeq2 compatibility and ensure sample order
-  message("5. Rounding abundance counts and aligning sample order for DESeq2...")
   gene_abundance_rounded <- round(gene_abundance)
   gene_abundance_rounded <- gene_abundance_rounded[, rownames(metadata), drop = FALSE] # drop=FALSE to handle single sample case
-  message("    Abundance data ready for DESeq2. Final dimensions: ", paste(dim(gene_abundance_rounded), collapse = "x"))
-  
+
   # 6. Create DESeq2 dataset and run differential expression analysis
-  message("6. Creating DESeq2 dataset and running differential expression analysis...")
   dds <- tryCatch(
-    DESeqDataSetFromMatrix(countData = gene_abundance_rounded,
-                           colData = metadata,
-                           design = ~ condition),
+    DESeq2::DESeqDataSetFromMatrix(countData = gene_abundance_rounded,
+                                   colData = metadata,
+                                   design = ~ condition),
     error = function(e) {
       stop(paste("Error creating DESeq2 dataset: ", e$message, ". Check abundance data (must be integers) and metadata consistency.", sep = ""))
     }
   )
-  
+
   dds <- tryCatch(
-    DESeq(dds),
+    DESeq2::DESeq(dds),
     error = function(e) {
       stop(paste("Error running DESeq2 analysis: ", e$message, ". This might happen if groups have zero variance, or too few samples.", sep = ""))
     }
   )
-  message("    DESeq2 analysis complete.")
-  
+
   # 7. Get all pairwise condition comparisons
   conditions <- levels(metadata$condition)
   if (length(conditions) < 2) {
     stop("Less than two unique conditions found in metadata 'class' column. Cannot perform pairwise comparisons.")
   }
   comparisons <- combn(conditions, 2, simplify = FALSE)
-  message("7. Identified ", length(comparisons), " pairwise comparisons: ",
-          paste(sapply(comparisons, function(x) paste(x, collapse = " vs ")), collapse = ", "))
-  
+
   # 8. Load pathway-to-gene mapping and reshape into TERM2GENE format
-  message("8. Loading pathway-to-gene mapping from: ", map_file)
   map_raw <- tryCatch(
-    read.csv(map_file, header = FALSE, fill = TRUE, stringsAsFactors = FALSE, skip = 1),
+    read_input_file(map_file, file_type = file_type, header = FALSE, fill = TRUE, stringsAsFactors = FALSE, skip = 1),
     error = function(e) {
-      stop(paste("Error loading map file '", map_file, "': ", e$message, ". Ensure it's a valid CSV.", sep = ""))
+      stop(paste("Error loading map file '", map_file, "': ", e$message, ". Ensure it's a valid CSV/TSV.", sep = ""))
     }
   )
-  
-  TERM2GENE <- map_raw %>%
-    gather(key = "temp_col", value = "gene", -V1) %>% # V1 becomes 'term', others become 'gene'
-    select(term = V1, gene) %>%
-    filter(gene != "") %>% # Remove empty gene entries
-    distinct() # Ensure unique pathway-gene pairs
-  
+
+  TERM2GENE <- dplyr::distinct(
+    dplyr::filter(
+      dplyr::select(
+        tidyr::gather(map_raw, key = "temp_col", value = "gene", -V1),
+        term = V1, gene
+      ),
+      gene != ""
+    )
+  )
+
   if (nrow(TERM2GENE) == 0) {
     stop("No valid pathway-gene mappings found after processing '", map_file, "'. Check file format.")
   }
-  message("    Processed ", nrow(TERM2GENE), " unique pathway-gene mappings.")
-  
+
   gsea_results_list <- list()
-  
+  gsea_output_paths <- c() # Initialize vector to store GSEA paths
+  jaccard_output_paths <- c() # Initialize vector to store Jaccard paths
+
   # 9. Loop over each pairwise comparison to run GSEA
-  message("9. Running GSEA for each pairwise comparison...")
   for (i in seq_along(comparisons)) {
     comp <- comparisons[[i]]
     cond1 <- comp[1]
     cond2 <- comp[2]
     comparison_name <- paste0(cond1, "_vs_", cond2)
-    message("    Processing comparison (", i, "/", length(comparisons), "): ", cond2, " vs ", cond1)
-    
+
     # Get DESeq2 results for contrast cond2 vs cond1
-    res <- results(dds, contrast = c("condition", cond2, cond1))
-    
+    res <- DESeq2::results(dds, contrast = c("condition", cond2, cond1))
+
     # Prepare ranked gene list
     ranked_df <- as.data.frame(res[, c("log2FoldChange", "pvalue")])
     # Filter out NA values for relevant columns before ranking
     ranked_df <- ranked_df[!is.na(ranked_df$log2FoldChange) & !is.na(ranked_df$pvalue), ]
-    
+
     if (nrow(ranked_df) == 0) {
       warning("No valid log2FoldChange or pvalue for comparison ", comparison_name, ". Skipping GSEA.")
       next
     }
-    
+
     # Apply chosen ranking method
     if (rank_by == "signed_log_pvalue") {
       # Handle cases where pvalue might be 0, leading to -log10(0) = Inf
       min_pvalue_for_log <- min(ranked_df$pvalue[ranked_df$pvalue > 0], na.rm = TRUE) / 2
       ranked_df$pvalue[ranked_df$pvalue == 0] <- min_pvalue_for_log
       ranked_df$rank <- sign(ranked_df$log2FoldChange) * -log10(ranked_df$pvalue)
-      message("    Ranking by signed -log10(p-value) for ", comparison_name, ".")
     } else if (rank_by == "log2FoldChange") {
       ranked_df$rank <- ranked_df$log2FoldChange
-      message("    Ranking by log2FoldChange for ", comparison_name, ".")
     }
-    
+
     ranked_df <- ranked_df[order(ranked_df$rank, decreasing = TRUE), ]
     geneList <- setNames(ranked_df$rank, rownames(ranked_df))
-    
+
     # Run GSEA using clusterProfiler
     gsea_res <- tryCatch(
-      GSEA(geneList = geneList,
-           TERM2GENE = TERM2GENE,
-           pvalueCutoff = pvalueCutoff,
-           pAdjustMethod = pAdjustMethod,
-           seed = TRUE,
-           verbose = FALSE),
+      clusterProfiler::GSEA(geneList = geneList,
+                            TERM2GENE = TERM2GENE,
+                            pvalueCutoff = pvalueCutoff,
+                            pAdjustMethod = pAdjustMethod,
+                            seed = TRUE,
+                            verbose = FALSE),
       error = function(e) {
         warning(paste("GSEA failed for comparison ", comparison_name, ": ", e$message, ". Skipping.", sep = ""))
         return(NULL)
       }
     )
-    
+
     if (is.null(gsea_res) || nrow(as.data.frame(gsea_res)) == 0) {
-      message("    No significant GSEA results found for ", comparison_name, ".")
       next
     }
-    
+
     # Save GSEA results dataframe
     gsea_df <- as.data.frame(gsea_res)
     key <- comparison_name
     gsea_results_list[[key]] <- gsea_df
-    
+
     # --- Construct full output path for GSEA results with parameters ---
-    
+
     # Format parameters for filename
-    pvalueCutoff_fname <- as.character(pvalueCutoff) # Convert numeric to string
+    pvalueCutoff_fname <- as.character(pvalueCutoff)
     pAdjustMethod_fname <- pAdjustMethod
     rank_by_fname <- rank_by
-    
+
     gsea_output_filename <- paste0(
       "gsea_results_", key, "_",
       pvalueCutoff_fname, "_",
@@ -624,54 +585,51 @@ construct_pathway_pathway_network <- function(
       rank_by_fname,
       ".csv"
     )
-    
+
     gsea_output_path <- file.path(output_file, gsea_output_filename)
     write.csv(gsea_df, gsea_output_path, row.names = FALSE)
-    message("    Saved GSEA results for ", comparison_name, " to: ", gsea_output_path)
+    gsea_output_paths <- c(gsea_output_paths, gsea_output_path) # Store path
   }
-  
+
   # 10. Compute Jaccard indices between pathways within each comparison's GSEA results
-  message("10. Computing Jaccard indices for overlapping pathways...")
   jaccard_results_list <- list()
-  
+
   if (length(gsea_results_list) == 0) {
-    message("    No GSEA results to compute Jaccard indices. Skipping.")
+    # No GSEA results to compute Jaccard indices. Skipping.
   } else {
     for (key in names(gsea_results_list)) {
-      message("    Calculating Jaccard index for comparison: ", key)
       gsea_df <- gsea_results_list[[key]]
-      
+
       # Filter for pathways with core enrichment genes (i.e., not empty or NA)
-      gsea_df_filtered <- gsea_df %>% filter(!is.na(core_enrichment) & core_enrichment != "")
+      gsea_df_filtered <- dplyr::filter(gsea_df, !is.na(core_enrichment) & core_enrichment != "")
       gene_sets <- strsplit(as.character(gsea_df_filtered$core_enrichment), "/")
-      gene_sets <- lapply(gene_sets, function(x) unique(na.omit(x))) # Ensure unique genes per set and remove NAs
-      
+      gene_sets <- lapply(gene_sets, function(x) unique(na.omit(x)))
+
       n <- length(gene_sets)
       res_list <- list()
-      
+
       if (n < 2) { # Ensure there are at least two pathways to compare
-        message(paste("    Less than two significant pathways with core enrichment for comparison '", key, "'. Skipping Jaccard index calculation for this comparison.", sep = ""))
         next
       }
-      
+
       for (i in 1:(n - 1)) {
         for (j in (i + 1):n) {
           genes_i <- gene_sets[[i]]
           genes_j <- gene_sets[[j]]
-          
+
           # Skip if either gene set is empty
           if (length(genes_i) == 0 || length(genes_j) == 0) {
             next
           }
-          
+
           intersection <- length(intersect(genes_i, genes_j))
           union <- length(union(genes_i, genes_j))
           jaccard <- ifelse(union == 0, 0, intersection / union)
-          
+
           if (jaccard > 0) {
             res_list[[length(res_list) + 1]] <- data.frame(
-              FunctionID_1 = gsea_df_filtered$ID[i], # Renamed from pathway_1
-              FunctionID_2 = gsea_df_filtered$ID[j], # Renamed from pathway_2
+              FunctionID_1 = gsea_df_filtered$ID[i],
+              FunctionID_2 = gsea_df_filtered$ID[j],
               jaccard_index = jaccard,
               comparison = key,
               stringsAsFactors = FALSE
@@ -679,21 +637,20 @@ construct_pathway_pathway_network <- function(
           }
         }
       }
-      
+
       if (length(res_list) > 0) {
         jaccard_df <- do.call(rbind, res_list)
-        # Construct full output path for Jaccard results (unchanged from previous version)
-        jaccard_output_path <- file.path(output_file, paste0("pathway_jaccard_", key, ".csv"))
+        # Construct full output path for Jaccard results using the new format
+        jaccard_output_path <- file.path(output_file, paste0("pathway_pathway_network_from_gsea_", key, ".csv"))
         write.csv(jaccard_df, jaccard_output_path, row.names = FALSE)
-        message("    Saved Jaccard index results for ", key, " to: ", jaccard_output_path)
+        jaccard_output_paths <- c(jaccard_output_paths, jaccard_output_path) 
       } else {
-        message("    No Jaccard indices > 0 found for comparison '", key, "'. Skipping saving file.")
+        # No Jaccard indices > 0 found for comparison. Skipping saving file.
       }
     }
   }
-  
-  message("Pathway-pathway network construction complete.")
-  return(invisible(NULL))
+
+  return(list(gsea_paths = gsea_output_paths, jaccard_paths = jaccard_output_paths)) 
 }
 ```
 
@@ -702,16 +659,23 @@ construct_pathway_pathway_network <- function(
 #### **Example usage**
 
 ```r
-source("https://raw.githubusercontent.com/bowornpol/NUIM-pipeline/main/code/construct_pathway_pathway_network.R")
+source("https://raw.githubusercontent.com/bowornpol/NUIM-pipeline/main/code/con_ppn.R")
 
-construct_pathway_pathway_network(
-   abundance_file = "pred_metagenome_unstrat.csv", 
-   metadata_file = "sample_metadata.csv",          
-   map_file = "pathway_gene_map.csv",              
-   output_file = "pathway_pathway_network_results", # Output directory for results       
-   pvalueCutoff = 0.05, # User MUST specify this value, e.g., 0.05
-   pAdjustMethod = "BH", # User can choose from "holm", "hochberg", "hommel", "bonferroni", "BH", "BY", "fdr", "none"
-   rank_by = "signed_log_pvalue" # User can choose from "signed_log_pvalue" or "log2FoldChange"
+# Define placeholder file paths and an output directory
+# Replace these with your actual file paths and desired output location
+abundance_file_path <- "data/pred_metagenome_unstrat.tsv" 
+metadata_file_path <- "data/sample_metadata.csv" 
+map_file_path <- "data/pathway_gene_map.tsv" 
+output_directory_ppn <- "pathway_pathway_network_results"
+
+con_ppn(
+  abundance_file = abundance_file_path, 
+  metadata_file = metadata_file_path,   
+  map_file = map_file_path,
+  output_file = output_directory_ppn,
+  pvalueCutoff = 0.05, # Adjusted p-value cutoff for GSEA
+  pAdjustMethod = "BH", # P-value adjustment method: "fdr", "holm", "hochberg", "hommel", "bonferroni", "BH", "BY", "none"
+  rank_by = "signed_log_pvalue" # How to rank genes: "signed_log_pvalue" or "log2FoldChange"
 )
 ```
 
@@ -723,9 +687,9 @@ For each comparison, two types of files are generated:
 
 1.  **`gsea_results_[class]_vs_[class]_[pvalueCutoff]_[pAdjustMethod]_[rank_by].csv`**: Contains detailed Gene Set Enrichment Analysis (GSEA) results for pathways. Each row describes an enriched pathway, including its ID, description, enrichment score (NES), and adjusted p-value (`p.adjust`). The `core_enrichment` column lists the key genes driving the enrichment.
 
-2.  **`pathway_jaccard_[class]_vs_[class].csv`**: Quantifies the similarity between *significant* pathways based on shared "core enriched" genes using the Jaccard index. This table defines the edges of the pathway-pathway network.
+2.  **`pathway_pathway_network_from_gsea_[class]_vs_[class].csv`**: Quantifies the similarity between *significant* pathways based on shared "core enriched" genes using the Jaccard index. This table defines the edges of the pathway-pathway network.
 
-**Example table: `pathway_jaccard_G1_vs_G2.csv`**
+**Example table: `pathway_pathway_network_from_gsea_G1_vs_G2.csv`**
 
 | FunctionID_1 | FunctionID_2 | jaccard_index | comparison |
 |:----------|:----------|:--------------|:-----------|
@@ -735,7 +699,7 @@ For each comparison, two types of files are generated:
 | ko00550    | ko00470    | 0.064         | G1_vs_G2   |
 | ...        | ...        | ...           | ...        |
 
-Each row represents a connection between two pathways (`pathway_1`, `pathway_2`). 
+Each row represents a connection between two pathways (`FunctionID_1`, `FunctionID_2`). 
 - `jaccard_index`: A value from 0 to 1 indicating the degree of shared genes between the two pathways; a higher value means more overlap and a stronger functional relationship.
 - `comparison`: Specifies the pairwise group comparison for which this Jaccard index was calculated. 
 
@@ -747,127 +711,98 @@ The pathway–metabolite network is constructed by calculating pairwise correlat
 
 | File                           | Description                                                                                                                                                        | Required columns                             |
 | :-----------------------------| :------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :-------------------------------------------- |
-| `path_abun_unstrat.csv`       | Pathway abundance data. Values will be converted to relative abundance within the function.                                                                        | `SampleID`, `FunctionID`                      |
-| `metabolite_concentration.csv`| Metabolite concentration data.                                                                                                                                     | `SampleID`, Metabolite names (as columns)     |
-| `sample_metadata.csv`         | Sample metadata with group or condition information. If not provided or `class` column is missing, correlations will be performed on the overall dataset. | `SampleID`, `class`                           |
-| `gsea_results_*.csv`          | GSEA results containing identified pathways.                                                                                                                       | `ID` (pathway ID)                             |
+| `path_abun_unstrat.tsv`       | Pathway abundance data. Values will be converted to relative abundance within the function.                                                                        | **Rows**: Pathway/Function IDs (first column, will become row names). **Columns**: Sample IDs (as column headers) |
+| `metabolite_concentration.*`| Metabolite concentration data.                                                                                                                                     | `SampleID`, Metabolite names (as columns)     |
+| `sample_metadata.*`         | Sample metadata with group or condition information. If not provided or `class` column is missing, correlations will be performed on the overall dataset. | `SampleID`, `class`                           |
+| `gsea_results_*.csv`          | GSEA results containing identified pathways.                                                                                                                       | `ID` (Pathway ID)                             |
 
 <details>
 <summary>Click to show the full R function</summary>
 
 ```r
-library(dplyr)
-library(tidyr)
-library(stats)
-library(tibble)
-library(stringr)
-library(tools) 
-
-construct_pathway_metabolite_network <- function(
+con_pmn <- function(
   pathway_abundance_file,
   metabolite_concentration_file,
   gsea_results_file,
   metadata_file,
-  output_file, # This is used as the output directory
+  output_file,
+  file_type = c("csv", "tsv"),
   correlation_method = c("spearman", "pearson"),
-  filter_by = c("none", "p_value", "q_value"), # Still used for filtering logic, just not filename
+  filter_by = c("none", "p_value", "q_value"),
   corr_cutoff,
-  p_value_cutoff, # Still used for filtering logic, just not filename
-  q_value_cutoff, # Still used for filtering logic, just not filename
-  q_adjust_method = c("bonferroni", "fdr") # Still used for filtering logic, just not filename
+  p_value_cutoff,
+  q_value_cutoff,
+  q_adjust_method = c("bonferroni", "fdr")
 ) {
   # Validate inputs
+  file_type <- match.arg(file_type)
   correlation_method <- match.arg(correlation_method)
   filter_by <- match.arg(filter_by)
   q_adjust_method <- match.arg(q_adjust_method)
-  
-  message("Starting pathway-metabolite network construction.")
-  message("Correlation method: ", correlation_method)
-  message("Filtering results by: ", filter_by)
-  
+
   if (filter_by == "p_value" && is.null(p_value_cutoff)) {
     stop("Error: 'p_value_cutoff' must be specified if 'filter_by' is 'p_value'.")
   }
   if (filter_by == "q_value" && is.null(q_value_cutoff)) {
     stop("Error: 'q_value_cutoff' must be specified if 'filter_by' is 'q_value'.")
   }
-  
-  message("Absolute correlation coefficient cutoff: ", corr_cutoff)
-  if (filter_by == "p_value") message("P-value cutoff: ", p_value_cutoff)
-  if (filter_by == "q_value") message("Q-value cutoff: ", q_value_cutoff, " (using ", q_adjust_method, " correction)")
-  
+
   # Create output directory if it doesn't exist
   if (!dir.exists(output_file)) {
     dir.create(output_file, recursive = TRUE)
-    message("Created output directory: ", output_file)
-  } else {
-    message("Output directory already exists: ", output_file)
   }
-  
+
   # Determine gsea_suffix for filename and group processing priority
-  gsea_suffix <- NULL
+  gsea_suffix <- NULL # This is used as the group_name_for_file initially, but is just the target group
   gsea_target_group_from_filename <- NULL
-  
+  gsea_source_group <- NULL # This is also extracted but not used for filename directly
+  gsea_comparison_group_for_filename <- NULL # Will store the "W0_vs_W2" part
+
   if (!is.null(gsea_results_file)) {
     # Check if the GSEA file exists before trying to read its name
     if (file.exists(gsea_results_file)) {
       gsea_basename <- tools::file_path_sans_ext(basename(gsea_results_file))
-      
+
       # Account for additional parameters after the group names
       match_result <- stringr::str_match(gsea_basename, "^gsea_results_([^_]+)_vs_([^_]+).*$")
-      
-      if (!is.na(match_result[1,1])) {
-        gsea_source_group <- match_result[1,2]
-        gsea_target_group_from_filename <- match_result[1,3]
-        
-        gsea_suffix <- gsea_target_group_from_filename
-        message("Derived GSEA filename suffix: '", gsea_suffix, "' (from GSEA target group)")
-        
-      } else {
-        message("  Warning: GSEA results file name '", basename(gsea_results_file), "' did not strictly match the 'gsea_results_SOURCE_vs_TARGET*.csv' pattern. No GSEA-specific group filtering will be applied based on filename.")
+
+      if (!is.na(match_result[1,1])) { # If the full pattern matches successfully
+        gsea_source_group <- match_result[1,2] # e.g., W0
+        gsea_target_group_from_filename <- match_result[1,3] # e.g., W2
+        gsea_comparison_group_for_filename <- paste0(gsea_source_group, "_vs_", gsea_target_group_from_filename) # e.g., W0_vs_W2
+        gsea_suffix <- gsea_target_group_from_filename # gsea_suffix now holds the target group
       }
-    } else {
-      message("  Warning: GSEA results file '", gsea_results_file, "' not found. No GSEA-specific group filtering will be applied based on filename.")
     }
-  } else {
-    message("No GSEA results file provided. Processing will default to groups from metadata or overall if no metadata.")
   }
-  
+
   # 1. Load data
-  message("1. Loading pathway abundance, metabolite concentration, and GSEA results...")
-  
   # Load Pathway Abundance (Expected: Pathways as Rows, Samples as Columns)
   pathway_abun_absolute <- tryCatch(
-    read.csv(pathway_abundance_file, header = TRUE, row.names = 1, stringsAsFactors = FALSE),
+    read_input_file(pathway_abundance_file, file_type = file_type, header = TRUE, row.names = 1, stringsAsFactors = FALSE),
     error = function(e) {
       stop(paste("Error loading pathway abundance file '", pathway_abundance_file, "': ", e$message, sep = ""))
     }
   )
-  
+
   # Load Metabolite Concentration (Expected: Samples as Rows, Metabolites as Columns)
   metabolite_conc_absolute <- tryCatch(
-    read.csv(metabolite_concentration_file, header = TRUE, row.names = 1, stringsAsFactors = FALSE),
+    read_input_file(metabolite_concentration_file, file_type = file_type, header = TRUE, row.names = 1, stringsAsFactors = FALSE),
     error = function(e) {
       stop(paste("Error loading metabolite concentration file '", metabolite_concentration_file, "': ", e$message, sep = ""))
     }
   )
-  
-  message("  Loaded pathway abundance. Dimensions: ", paste(dim(pathway_abun_absolute), collapse = "x"))
-  message("  Loaded metabolite concentration. Dimensions: ", paste(dim(metabolite_conc_absolute), collapse = "x"))
-  
+
   # 2. Load metadata if provided
   metadata <- NULL
   if (!is.null(metadata_file)) {
-    message("2. Loading sample metadata from: ", metadata_file)
     metadata <- tryCatch(
-      read.csv(metadata_file, header = TRUE, stringsAsFactors = FALSE),
+      read_input_file(metadata_file, file_type = file_type, header = TRUE, stringsAsFactors = FALSE),
       error = function(e) {
         warning(paste("Warning: Error loading metadata file '", metadata_file, "': ", e$message, ". Proceeding without group-specific analysis.", sep = ""))
         return(NULL)
       }
     )
     if (!is.null(metadata)) {
-      message("  Loaded metadata. Dimensions: ", paste(dim(metadata), collapse = "x"))
       if (!"SampleID" %in% colnames(metadata)) {
         warning("Metadata file missing 'SampleID' column. Proceeding without group-specific analysis.")
         metadata <- NULL
@@ -880,253 +815,211 @@ construct_pathway_metabolite_network <- function(
         rownames(metadata) <- metadata$SampleID
       }
     }
-  } else {
-    message("2. No metadata file provided. Performing correlation on overall dataset (single group).")
   }
-  
+
   # 3. Data preparation: Ensure SampleIDs align
-  message("3. Preparing data for correlation...")
-  
   # Get common samples across all datasets
   common_samples <- intersect(colnames(pathway_abun_absolute), rownames(metabolite_conc_absolute))
   if (!is.null(metadata)) {
     common_samples <- intersect(common_samples, rownames(metadata))
   }
-  
+
   if (length(common_samples) == 0) {
     stop("No common samples found between pathway abundance, metabolite concentration, and metadata (if provided). Please check SampleIDs for consistency across all input files.")
   }
-  message("  Number of common samples: ", length(common_samples))
-  
+
   # Filter abundance data to common samples
   pathway_abun_filtered_by_samples <- pathway_abun_absolute[, common_samples, drop = FALSE]
-  
+
   # metabolite_conc_filtered_by_samples will be Samples x Metabolites
   metabolite_conc_filtered_by_samples <- metabolite_conc_absolute[common_samples, , drop = FALSE]
-  
+
   # Filter metadata to common samples OR create an "overall" group if no metadata
   if (!is.null(metadata)) {
     metadata_filtered <- metadata[common_samples, , drop = FALSE]
   } else {
     metadata_filtered <- data.frame(SampleID = common_samples, class = "overall", row.names = common_samples)
     metadata_filtered$class <- as.factor(metadata_filtered$class)
-    message("  No metadata provided, processing all samples as a single 'overall' group.")
   }
-  
+
   # Convert pathway abundance to relative values (SAMPLE-WISE normalization)
-  message("  Converting pathway abundance to relative values (sample-wise) using dplyr syntax...")
-  pathway_abun_temp_tibble <- pathway_abun_filtered_by_samples %>%
-    tibble::rownames_to_column(var = "FunctionID")
-  
-  relative_abundance_tibble <- pathway_abun_temp_tibble %>%
-    mutate(across(-FunctionID, ~ {
-      col_sum <- sum(., na.rm = TRUE)
-      if (col_sum == 0) {
-        0
-      } else {
-        . / col_sum
-      }
-    }, .names = "{col}"))
-  
-  pathway_abun_relative <- relative_abundance_tibble %>%
-    tibble::column_to_rownames(var = "FunctionID")
-  
+  pathway_abun_temp_tibble <- tibble::rownames_to_column(pathway_abun_filtered_by_samples, var = "FunctionID")
+
+  relative_abundance_tibble <- dplyr::mutate(pathway_abun_temp_tibble, dplyr::across(-FunctionID, ~ {
+    col_sum <- sum(., na.rm = TRUE)
+    if (col_sum == 0) {
+      0
+    } else {
+      . / col_sum
+    }
+  }, .names = "{col}"))
+
+  pathway_abun_relative <- tibble::column_to_rownames(relative_abundance_tibble, var = "FunctionID")
+
   pathway_abun_relative[is.na(pathway_abun_filtered_by_samples)] <- NA
-  message("  Pathway abundance converted to relative values.")
-  
+
   # Filter normalized pathways based on GSEA results
   pathway_abun_for_correlation <- pathway_abun_relative
   if (!is.null(gsea_results_file) && file.exists(gsea_results_file)) { # Check file existence again before loading
-    message("  Filtering normalized pathways based on GSEA results...")
     gsea_results_df <- tryCatch(
-      read.csv(gsea_results_file, header = TRUE, stringsAsFactors = FALSE),
+      read_input_file(gsea_results_file, file_type = file_type, header = TRUE, stringsAsFactors = FALSE),
       error = function(e) {
         stop(paste("Error loading GSEA results file '", gsea_results_file, "': ", e$message, sep = ""))
       }
     )
-    
+
     pathway_id_col <- NULL
     if ("ID" %in% colnames(gsea_results_df)) {
       pathway_id_col <- "ID"
     } else {
       stop("GSEA results file must contain an 'ID' column with pathway identifiers.")
     }
-    
+
     pathways_from_gsea <- unique(gsea_results_df[[pathway_id_col]])
-    
-    initial_normalized_pathway_count <- nrow(pathway_abun_relative)
     pathway_abun_for_correlation <- pathway_abun_relative[rownames(pathway_abun_relative) %in% pathways_from_gsea, , drop = FALSE]
-    
+
     if (nrow(pathway_abun_for_correlation) == 0) {
       stop("No pathways from GSEA results were found in the normalized pathway abundance file. Please check pathway identifiers in both files.")
     }
-    message("  Filtered normalized pathway abundance to ", nrow(pathway_abun_for_correlation), " pathways (from ", initial_normalized_pathway_count, " initial) based on GSEA results.")
-  } else {
-    message("  No GSEA results file provided or file not found. Proceeding with all normalized pathways for correlation.")
   }
-  
+
   # Ensure all data are numeric for correlation (convert data frames to numeric)
   pathway_abun_for_correlation[] <- lapply(pathway_abun_for_correlation, as.numeric)
   metabolite_conc_filtered_by_samples[] <- lapply(metabolite_conc_filtered_by_samples, as.numeric)
-  
+
   # Determine groups to process based on metadata AND GSEA filename priority
   all_metadata_groups <- unique(metadata_filtered$class)
   groups_to_process <- all_metadata_groups # Default: process all groups from metadata
-  
+
   if (!is.null(gsea_target_group_from_filename)) { # If a target group was successfully extracted from GSEA filename
     if (gsea_target_group_from_filename %in% all_metadata_groups) {
       # If the GSEA target group exists in metadata, process ONLY that group
       groups_to_process <- gsea_target_group_from_filename
-      message("  Restricting processing to group: '", gsea_target_group_from_filename, "' as implied by GSEA results filename.")
     } else {
-      warning("  GSEA target group '", gsea_target_group_from_filename, "' (from filename) not found in metadata groups. Processing all groups from metadata.")
       # Fallback to all groups from metadata if the target group from filename isn't in metadata
       groups_to_process <- all_metadata_groups
     }
-  } else {
-    message("  Processing all groups from metadata (no specific GSEA target group identified from filename).")
   }
-  
+
   if (length(groups_to_process) == 0) {
     stop("No valid groups to process after filtering based on GSEA filename and metadata. Please check group names consistency.")
   }
-  message("Final groups to process: ", paste(groups_to_process, collapse = ", "))
-  
+
   all_correlation_results <- list()
-  
+  pathway_metabolite_output_paths <- c() # Initialize vector to store paths
+
   # 4. Loop over each (now potentially filtered) group to perform correlations
-  message("4. Performing correlations for each selected group...")
   for (current_group in groups_to_process) {
-    message("  Processing group: '", current_group, "'")
-    
     # Get samples belonging to the current group
     samples_in_group <- rownames(metadata_filtered[metadata_filtered$class == current_group, , drop = FALSE])
-    
+
     if (length(samples_in_group) < 3) {
-      warning("  Not enough samples (less than 3) in group '", current_group, "' to perform meaningful correlations. Skipping.")
+      warning("Not enough samples (less than 3) in group '", current_group, "' to perform meaningful correlations. Skipping.")
       next
     }
-    
+
     # Subset data for the current group
     path_data_group <- pathway_abun_for_correlation[, samples_in_group, drop = FALSE]
     met_data_group <- metabolite_conc_filtered_by_samples[samples_in_group, , drop = FALSE]
-    
+
     # Transpose pathway data for correlation: cor.test expects vectors or Samples as Rows
     path_data_group <- t(path_data_group)
-    
+
     # Get column names for pathways and metabolites
     pathway_names <- colnames(path_data_group)
     metabolite_names <- colnames(met_data_group)
-    
+
     # Initialize empty list to store correlation results in long format
     results_list_for_group <- list()
-    
-    message("    Calculating correlations using cor.test for each pair...")
+
     # Loop through each pathway and each metabolite to get individual correlation tests
     for (path_name in pathway_names) {
       for (met_name in metabolite_names) {
         vec_path <- path_data_group[, path_name]
         vec_met <- met_data_group[, met_name]
-        
+
         # Calculate number of complete observations for this specific pair
-        valid_obs_count <- sum(complete.cases(vec_path, vec_met))
-        
+        valid_obs_count <- sum(stats::complete.cases(vec_path, vec_met))
+
         # Only perform cor.test if there are at least 3 valid pairs
         if (valid_obs_count >= 3) {
           cor_args <- list(x = vec_path, y = vec_met, method = correlation_method)
           if (correlation_method == "spearman") {
             cor_args$exact <- FALSE # For large N, exact p-value is computationally intensive for Spearman
           }
-          
+
           cor_test_result <- tryCatch({
             do.call(stats::cor.test, cor_args)
           }, error = function(e) {
             return(NULL) # Return NULL if error occurs
           })
-          
+
           if (!is.null(cor_test_result)) {
             results_list_for_group[[length(results_list_for_group) + 1]] <- data.frame(
               FunctionID = path_name,
               MetaboliteID = met_name,
-              Correlation = cor_test_result$estimate,
-              P_value = cor_test_result$p.value,
+              correlation = cor_test_result$estimate,
+              p_value = cor_test_result$p.value,
               stringsAsFactors = FALSE
             )
           }
         }
       }
     }
-    
+
     if (length(results_list_for_group) == 0) {
-      message("    No valid pathway-metabolite correlations found for group '", current_group, "'. Skipping output for this group.")
-      next # Skip to next group if no results
-    }
-    
-    # Combine all results for the current group into a single data frame
-    combined_results <- do.call(rbind, results_list_for_group)
-    
-    # Calculate Q-values using the specified adjustment method for ALL p-values in this group
-    combined_results$Q_value <- stats::p.adjust(combined_results$P_value, method = q_adjust_method)
-    
-    # 5. Apply filtering based on user choice (now including Q_value)
-    message("  Applying filters for group '", current_group, "'...")
-    
-    # Filter by absolute correlation coefficient first
-    combined_results_filtered <- combined_results %>%
-      filter(abs(Correlation) >= corr_cutoff)
-    
-    if (filter_by == "p_value") {
-      combined_results_filtered <- combined_results_filtered %>%
-        filter(P_value <= p_value_cutoff)
-      message("  Filtered by p-value <= ", p_value_cutoff)
-    } else if (filter_by == "q_value") {
-      combined_results_filtered <- combined_results_filtered %>%
-        filter(Q_value <= q_value_cutoff)
-      message("  Filtered by q-value <= ", q_value_cutoff, " (", q_adjust_method, " correction)")
-    }
-    
-    if (nrow(combined_results_filtered) == 0) {
-      message("  No significant correlations found after filtering for group '", current_group, "'. Skipping output for this group.")
       next
     }
-    
-    combined_results_filtered$Group <- current_group
+
+    # Combine all results for the current group into a single data frame
+    combined_results <- do.call(rbind, results_list_for_group)
+
+    # Calculate Q-values using the specified adjustment method for ALL p-values in this group
+    combined_results$q_value <- stats::p.adjust(combined_results$p_value, method = q_adjust_method)
+
+    # 5. Apply filtering based on user choice (now including q_value)
+    # Filter by absolute correlation coefficient first
+    combined_results_filtered <- dplyr::filter(combined_results, abs(correlation) >= corr_cutoff)
+
+    if (filter_by == "p_value") {
+      combined_results_filtered <- dplyr::filter(combined_results_filtered, p_value <= p_value_cutoff)
+    } else if (filter_by == "q_value") {
+      combined_results_filtered <- dplyr::filter(combined_results_filtered, q_value <= q_value_cutoff)
+    }
+
+    if (nrow(combined_results_filtered) == 0) {
+      next
+    }
+
+    combined_results_filtered$group <- current_group
     all_correlation_results[[current_group]] <- combined_results_filtered
-    
+
     # --- Save results with specific filename based on parameters ---
-    
-    # Determine the group name for the filename
-    # Prioritize gsea_suffix if it was successfully extracted and applies to this group
-    group_name_for_file <- current_group
-    if (!is.null(gsea_suffix) && current_group == gsea_suffix) {
-      group_name_for_file <- gsea_suffix
-    }
-    # If current_group is "overall" (meaning no metadata was provided), and gsea_suffix exists,
-    # then use gsea_suffix in the filename. Otherwise, "overall" is correct.
-    if (current_group == "overall" && !is.null(gsea_suffix)) {
-      group_name_for_file <- gsea_suffix
-    }
-    
+
     # Format cutoffs for filename (keeping decimals)
-    # Use formatC to avoid scientific notation for very small numbers, use "f" for fixed
-    corr_cutoff_fname <- formatC(corr_cutoff, format = "f", digits = 2) 
-    
-    # Construct the simplified output filename
+    corr_cutoff_fname <- formatC(corr_cutoff, format = "f", digits = 2)
+
+    # Determine the suffix part for the GSEA filename components
+    gsea_filename_part <- ""
+    if (!is.null(gsea_target_group_from_filename) && !is.null(gsea_comparison_group_for_filename)) {
+      gsea_filename_part <- paste0("_", gsea_target_group_from_filename, "_from_gsea_", gsea_comparison_group_for_filename)
+    }
+
     output_filename <- paste0(
       "pathway_metabolite_network_",
-      group_name_for_file, "_",
+      current_group, "_", # Add current group to filename
       correlation_method, "_",
       corr_cutoff_fname,
+      gsea_filename_part, # Add the specific GSEA part here
       ".csv"
     )
-    
+
     output_filepath <- file.path(output_file, output_filename)
     write.csv(combined_results_filtered, output_filepath, row.names = FALSE)
-    message("  Saved results for group '", current_group, "' to: ", output_filepath)
+    pathway_metabolite_output_paths <- c(pathway_metabolite_output_paths, output_filepath) 
   }
-  
-  message("Pathway-metabolite network construction complete.")
-  return(invisible(NULL))
+
+  return(pathway_metabolite_output_paths) 
 }
 ```
 
@@ -1135,30 +1028,38 @@ construct_pathway_metabolite_network <- function(
 #### **Example usage**
 
 ```r
-source("https://raw.githubusercontent.com/bowornpol/NUIM-pipeline/main/code/construct_pathway_metabolite_network.R")
+source("https://raw.githubusercontent.com/bowornpol/NUIM-pipeline/main/code/con_pmn.R")
 
-construct_pathway_metabolite_network(
-  pathway_abundance_file = "path_abun_unstrat.csv", 
-  metabolite_concentration_file = "metabolite_concentration.csv",
-  gsea_results_file = "pathway_pathway_network_results/gsea_results_G1_vs_G2_0.1_fdr_signed_log_pvalue.csv",
-  metadata_file = "sample_metadata.csv", # Optional, set to NULL if no groups
-  output_file = "pathway_metabolite_network_results", # Output directory for results
-  correlation_method = "pearson", # User can choose from "spearman" or "pearson"
-  filter_by = "none", # User can choose from "none", "p_value", or "q_value"
-  corr_cutoff = 0.5, # Absolute correlation coefficient cutoff (e.g., 0.5)
-  p_value_cutoff = NULL, # Set if filter_by = "p_value"
-  q_value_cutoff = NULL, # Set if filter_by = "q_value"
-  q_adjust_method = NULL # User can choose "bonferroni" or "fdr" if filter_by = "q_value"
+# Define placeholder file paths and an output directory
+# Replace these with your actual file paths and desired output location
+pathway_abun_file_path <- "data/path_abun_unstrat.tsv" 
+metabolite_conc_file_path <- "data/metabolite_concentration.csv" 
+gsea_results_file_path <- "data/gsea_results_G1_vs_G1_0.05_BH_signed_log_pvalue.csv"
+metadata_file_path <- "data/sample_metadata.csv" 
+output_directory_pmn <- "pathway_metabolite_network_results"
+
+con_pmn(
+  pathway_abundance_file = pathway_abun_file_path,
+  metabolite_concentration_file = metabolite_conc_file_path,
+  gsea_results_file = gsea_results_file_path, 
+  metadata_file = metadata_file_path,
+  output_file = output_directory_pmn,
+  correlation_method = "spearman", # User can choose from "spearman", "pearson"
+  filter_by = "p_value", # User can choose from "none", "p_value", "q_value"
+  corr_cutoff = 0.5, # Absolute correlation coefficient cutoff
+  p_value_cutoff = 0.05, # P-value cutoff for filtering (used if filter_by="p_value")
+  q_value_cutoff = NULL, # Not used when filter_by="p_value"
+  q_adjust_method = "fdr" # P-value adjustment method: "bonferroni", "fdr"
 )
 ```
 
 #### **Example output**
 
-The function creates an output directory (e.g., `pathway_metabolite_network_results`) containing `.csv` files for each group analyzed (e.g., `pathway_metabolite_network_[class]_[correlation_method]_[corr_cutoff].csv` or `pathway_metabolite_network_overall.csv` if no groups are defined).
+The function creates an output directory (e.g., `pathway_metabolite_network_results`) containing `.csv` files for each group analyzed (e.g., `pathway_metabolite_network_[class]_[correlation_method]_[corr_cutoff]_[target class]_from_gsea_[class]_vs_[class].csv`).
 
-**Example table: `pathway_metabolite_network_G2_pearson_corr_0.30.csv`**
+**Example table: `pathway_metabolite_network_spearman_0.5_G2_from_gsea_G1_vs_G2.csv`**
 
-| FunctionID | MetaboliteID | Correlation | P_value | Q_value | Group |
+| FunctionID | MetaboliteID | correlation | p_value | q_value | group |
 |:-----------|:-------------|:------------|:--------|:--------|:------|
 | ko00010    | acetate       | 0.82        | 0.001   | 0.005   | G2    |
 | ko00020    | butyrate      | -0.75       | 0.003   | 0.008   | G2    |
@@ -1167,10 +1068,10 @@ The function creates an output directory (e.g., `pathway_metabolite_network_resu
 | ...        | ...           | ...         | ...     | ...     | ...   |
 
 Each row represents a correlation (edge) between a pathway (`FunctionID`) and a metabolite (`MetaboliteID`).
-- `Correlation`: The correlation coefficient (Spearman or Pearson) indicating the strength and direction of the relationship.
-- `P_value`: The raw p-value for the correlation.
-- `Q_value`: The adjusted p-value (q-value), if q-value filtering was selected.
-- `Group`: The specific group for which the correlation was calculated.
+- `correlation`: The correlation coefficient (Spearman or Pearson) indicating the strength and direction of the relationship.
+- `p_value`: The raw p-value for the correlation.
+- `q_value`: The adjusted p-value (q-value), if q-value filtering was selected.
+- `group`: The specific group for which the correlation was calculated.
 
 ### <ins>STEP 4: Multi-layered network construction</ins>
 
@@ -1181,226 +1082,200 @@ These networks are finally integrated through connected pathway nodes to constru
 | File | Description | Required columns |
 | :------------- | :---------- | :--------------- |
 | `microbe_pathway_network_*.csv` | Microbe-pathway network table. | `TaxonID`, `FunctionID`, `relative_contribution` |
-| `pathway_jaccard_*.csv` | Pathway-pathway network table. | `FunctionID_1`, `FunctionID_2`, `jaccard_index` |
-| `pathway_metabolite_network_*.csv` | Pathway-metabolite network table. | `FunctionID`, `MetaboliteID`, `Correlation` |
+| `pathway_jpatgway_network_*.csv` | Pathway-pathway network table. | `FunctionID_1`, `FunctionID_2`, `jaccard_index` |
+| `pathway_metabolite_network_*.csv` | Pathway-metabolite network table. | `FunctionID`, `MetaboliteID`, `correlation` |
 | `gsea_results_*.csv` | GSEA results containing identified pathways. | `ID` (pathway ID) |
 
 <details>
 <summary>Click to show the full R function</summary>
 
 ```r
-library(dplyr)
-library(tidyr)
-library(stringr)
-library(tools) 
-
-construct_multi_layered_network <- function(
+con_mln <- function(
   gsea_results_file,
   microbe_pathway_file,
   pathway_jaccard_file,
   pathway_metabolite_file,
-  output_directory # Renamed from output_file to clarify it's a directory
+  output_directory,
+  file_type = c("csv", "tsv")
 ) {
-  message("Starting multi-layered network construction.")
+  file_type <- match.arg(file_type)
+  
   
   # Create output directory if it doesn't exist
   if (!dir.exists(output_directory)) {
     dir.create(output_directory, recursive = TRUE)
-    message("Created output directory: ", output_directory)
-  } else {
-    message("Output directory already exists: ", output_directory)
   }
   
-  # Determine gsea_suffix and target groups for processing 
-  gsea_suffix <- NULL 
-  gsea_target_group_from_filename <- NULL 
+  # Initialize variables to hold GSEA derived names for filename and filtering
+  gsea_suffix <- NULL # This will store the TARGET group (e.g., "W4")
+  gsea_comparison_group <- NULL # This will store the full comparison (e.g., "W0_vs_W4")
+  gsea_pathways_to_filter <- NULL
   
+  # 1. Load GSEA results and extract relevant pathways and filename components
   if (!is.null(gsea_results_file)) {
-    # Check if the GSEA file actually exists before trying to parse its name
     if (file.exists(gsea_results_file)) {
       gsea_basename <- tools::file_path_sans_ext(basename(gsea_results_file))
       
-      # Account for additional parameters after the group names
+      # Extract source and target groups, and the full comparison group
       match_result <- stringr::str_match(gsea_basename, "^gsea_results_([^_]+)_vs_([^_]+).*$")
       
-      if (!is.na(match_result[1,1])) { # If the full pattern matches successfully
-        gsea_source_group <- match_result[1,2] 
-        gsea_target_group_from_filename <- match_result[1,3] 
-        
-        gsea_suffix <- gsea_target_group_from_filename # Use target group as suffix for filename
-        message("Derived GSEA filename suffix: '", gsea_suffix, "' (from GSEA target group)")
-        
+      if (!is.na(match_result[1,1])) {
+        gsea_source_group <- match_result[1,2]
+        gsea_target_group <- match_result[1,3]
+        gsea_suffix <- gsea_target_group # Assign target group to gsea_suffix
+        gsea_comparison_group <- paste0(gsea_source_group, "_vs_", gsea_target_group) # Assign full comparison group
+      }
+      
+      gsea_results_df <- tryCatch(
+        read_input_file(gsea_results_file, file_type = file_type, header = TRUE, stringsAsFactors = FALSE),
+        error = function(e) {
+          stop(paste("Error loading GSEA results file '", gsea_results_file, "': ", e$message, sep = ""))
+        }
+      )
+      
+      if ("ID" %in% colnames(gsea_results_df)) {
+        # Filter for significant pathways based on 'p.adjust' and 'NES'
+        # Using a relaxed cutoff for initial pathway filtering for integration
+        # (specific cutoffs for each layer are handled by their respective functions)
+        gsea_pathways_to_filter <- unique(gsea_results_df$ID)
       } else {
-        message("  Warning: GSEA results file name '", basename(gsea_results_file), "' did not strictly match the 'gsea_results_SOURCE_vs_TARGET*.csv' pattern for precise group identification. Output filename will use 'overall' suffix.")
+        warning("GSEA results file must contain an 'ID' column with pathway identifiers. No GSEA pathway filtering will be applied.")
       }
     } else {
-      message("  Warning: GSEA results file '", gsea_results_file, "' not found. Output filename will use 'overall' suffix.")
+      warning("GSEA results file '", gsea_results_file, "' not found. No GSEA pathway filtering will be applied to layers.")
     }
   } else {
-    message("No GSEA results file provided, defaulting to processing without GSEA-specific group identification.")
+    # No GSEA results file provided. No GSEA pathway filtering will be applied to layers.
   }
-  
-  # 1. Load GSEA results to identify all pathways to be included
-  message("\n1. Identifying pathways from GSEA results for filtering...")
-  if (!file.exists(gsea_results_file)) {
-    stop("GSEA results file not found: '", gsea_results_file, "'. Cannot proceed.")
-  }
-  
-  gsea_df <- tryCatch(
-    read.csv(gsea_results_file, stringsAsFactors = FALSE),
-    error = function(e) {
-      stop(paste("Error reading GSEA results file '", gsea_results_file, "': ", e$message, sep = ""))
-    }
-  )
-  
-  if (!"ID" %in% colnames(gsea_df)) {
-    stop("GSEA results file '", gsea_results_file, "' must contain an 'ID' column for pathways.")
-  }
-  
-  pathways_to_integrate_set <- unique(as.character(gsea_df$ID))
-  
-  if (length(pathways_to_integrate_set) == 0) {
-    stop("No pathways identified from GSEA results '", gsea_results_file, "'. Cannot construct multi-layered network.")
-  }
-  message("    Identified ", length(pathways_to_integrate_set), " unique pathways from GSEA results for integration.")
   
   all_network_edges <- list()
   
-  # 2. Load and process Microbe-Pathway Network edges
-  message("\n2. Processing Microbe-Pathway network edges...")
-  if (!file.exists(microbe_pathway_file)) {
-    message("    Microbe-Pathway network file not found: '", microbe_pathway_file, "'. Skipping this layer.")
-  } else {
+  # 2. Process Microbe-Pathway Network
+  if (!is.null(microbe_pathway_file) && file.exists(microbe_pathway_file)) {
     mp_df <- tryCatch(
-      read.csv(microbe_pathway_file, stringsAsFactors = FALSE),
+      read_input_file(microbe_pathway_file, file_type = file_type, header = TRUE, stringsAsFactors = FALSE),
       error = function(e) {
-        warning(paste("Error reading Microbe-Pathway file '", basename(microbe_pathway_file), "': ", e$message, ". Skipping this layer.", sep = ""))
+        warning(paste("Error loading Microbe-Pathway file '", microbe_pathway_file, "': ", e$message, ". Skipping this layer.", sep = ""))
         return(NULL)
       }
     )
-    
-    if (!is.null(mp_df) && all(c("TaxonID", "FunctionID", "relative_contribution") %in% colnames(mp_df))) {
-      # Filter by pathways identified from GSEA files (FunctionID must be a GSEA pathway)
-      mp_filtered <- mp_df %>%
-        filter(FunctionID %in% pathways_to_integrate_set) %>%
-        select(
-          Feature1 = TaxonID,
-          Feature2 = FunctionID,
-          Edge_Score = relative_contribution
-        ) %>%
-        mutate(
-          Edge_Type = "Microbe-Pathway"
-        )
-      if (nrow(mp_filtered) > 0) {
-        all_network_edges[[length(all_network_edges) + 1]] <- mp_filtered
-        message("    Added ", nrow(mp_filtered), " microbe-pathway edges from ", basename(microbe_pathway_file), ".")
+    if (!is.null(mp_df)) {
+      # Ensure expected columns are present
+      required_mp_cols <- c("TaxonID", "FunctionID", "relative_contribution")
+      if (!all(required_mp_cols %in% colnames(mp_df))) {
+        warning("Microbe-Pathway file missing required columns (TaxonID, FunctionID, relative_contribution). Skipping this layer.")
+        mp_df <- NULL
       } else {
-        message("    No relevant microbe-pathway edges found in ", basename(microbe_pathway_file), " after filtering by GSEA pathways.")
+        # Filter by GSEA pathways if available
+        if (!is.null(gsea_pathways_to_filter)) {
+          mp_df <- dplyr::filter(mp_df, FunctionID %in% gsea_pathways_to_filter)
+        }
+        
+        if (nrow(mp_df) > 0) {
+          # Standardize column names
+          mp_df_standardized <- dplyr::select(mp_df,
+                                              Feature1 = TaxonID,
+                                              Feature2 = FunctionID,
+                                              edge_score = relative_contribution
+          )
+          mp_df_standardized$edge_type <- "Microbe-Pathway"
+          all_network_edges[[length(all_network_edges) + 1]] <- mp_df_standardized
+        }
       }
-    } else {
-      warning("    Microbe-Pathway file '", basename(microbe_pathway_file), "' missing required columns ('TaxonID', 'FunctionID', 'relative_contribution') or is empty. Skipping this layer.")
     }
   }
   
-  # 3. Load and process Pathway-Pathway Network edges
-  message("\n3. Processing Pathway-Pathway network edges...")
-  if (!file.exists(pathway_jaccard_file)) {
-    message("    Pathway-Pathway network file not found: '", pathway_jaccard_file, "'. Skipping this layer.")
-  } else {
-    pp_df <- tryCatch(
-      read.csv(pathway_jaccard_file, stringsAsFactors = FALSE),
+  # 3. Process Pathway-Pathway Network (Jaccard Index)
+  if (!is.null(pathway_jaccard_file) && file.exists(pathway_jaccard_file)) {
+    pj_df <- tryCatch(
+      read_input_file(pathway_jaccard_file, file_type = file_type, header = TRUE, stringsAsFactors = FALSE),
       error = function(e) {
-        warning(paste("Error reading Pathway-Pathway file '", basename(pathway_jaccard_file), "': ", e$message, ". Skipping this layer.", sep = ""))
+        warning(paste("Error loading Pathway-Pathway Jaccard file '", pathway_jaccard_file, "': ", e$message, ". Skipping this layer.", sep = ""))
         return(NULL)
       }
     )
-    
-    if (!is.null(pp_df) && all(c("FunctionID_1", "FunctionID_2", "jaccard_index") %in% colnames(pp_df))) {
-      # Filter by pathways identified from GSEA files (both FunctionID_1 AND FunctionID_2 must be GSEA pathways)
-      pp_filtered <- pp_df %>%
-        filter(FunctionID_1 %in% pathways_to_integrate_set & FunctionID_2 %in% pathways_to_integrate_set) %>%
-        select(
-          Feature1 = FunctionID_1,
-          Feature2 = FunctionID_2,
-          Edge_Score = jaccard_index
-        ) %>%
-        mutate(
-          Edge_Type = "Pathway-Pathway"
-        )
-      if (nrow(pp_filtered) > 0) {
-        all_network_edges[[length(all_network_edges) + 1]] <- pp_filtered
-        message("    Added ", nrow(pp_filtered), " pathway-pathway edges from ", basename(pathway_jaccard_file), ".")
+    if (!is.null(pj_df)) {
+      required_pj_cols <- c("FunctionID_1", "FunctionID_2", "jaccard_index")
+      if (!all(required_pj_cols %in% colnames(pj_df))) {
+        warning("Pathway-Pathway Jaccard file missing required columns (FunctionID_1, FunctionID_2, jaccard_index). Skipping this layer.")
+        pj_df <- NULL
       } else {
-        message("    No relevant pathway-pathway edges found in ", basename(pathway_jaccard_file), " after filtering by GSEA pathways.")
+        # Filter by GSEA pathways if available (both ends of the edge)
+        if (!is.null(gsea_pathways_to_filter)) {
+          pj_df <- dplyr::filter(pj_df, FunctionID_1 %in% gsea_pathways_to_filter & FunctionID_2 %in% gsea_pathways_to_filter)
+        }
+        
+        if (nrow(pj_df) > 0) {
+          # Standardize column names
+          pj_df_standardized <- dplyr::select(pj_df,
+                                              Feature1 = FunctionID_1,
+                                              Feature2 = FunctionID_2,
+                                              edge_score = jaccard_index
+          )
+          pj_df_standardized$edge_type <- "Pathway-Pathway"
+          all_network_edges[[length(all_network_edges) + 1]] <- pj_df_standardized
+        }
       }
-    } else {
-      warning("    Pathway-Pathway file '", basename(pathway_jaccard_file), "' missing required columns ('FunctionID_1', 'FunctionID_2', 'jaccard_index') or is empty. Skipping this layer.")
     }
   }
   
-  # 4. Load and process Pathway-Metabolite Network edges
-  message("\n4. Processing Pathway-Metabolite network edges...")
-  if (!file.exists(pathway_metabolite_file)) {
-    message("    Pathway-Metabolite network file not found: '", pathway_metabolite_file, "'. Skipping this layer.")
-  } else {
+  # 4. Process Pathway-Metabolite Network
+  if (!is.null(pathway_metabolite_file) && file.exists(pathway_metabolite_file)) {
     pm_df <- tryCatch(
-      read.csv(pathway_metabolite_file, stringsAsFactors = FALSE),
+      read_input_file(pathway_metabolite_file, file_type = file_type, header = TRUE, stringsAsFactors = FALSE),
       error = function(e) {
-        warning(paste("Error reading Pathway-Metabolite file '", basename(pathway_metabolite_file), "': ", e$message, ". Skipping this layer.", sep = ""))
+        warning(paste("Error loading Pathway-Metabolite file '", pathway_metabolite_file, "': ", e$message, ". Skipping this layer.", sep = ""))
         return(NULL)
       }
     )
-    
-    if (!is.null(pm_df) && all(c("FunctionID", "MetaboliteID", "Correlation") %in% colnames(pm_df))) {
-      # Filter by pathways identified from GSEA files (FunctionID must be a GSEA pathway)
-      pm_filtered <- pm_df %>%
-        filter(FunctionID %in% pathways_to_integrate_set) %>%
-        select(
-          Feature1 = FunctionID,
-          Feature2 = MetaboliteID,
-          Edge_Score = Correlation
-        ) %>%
-        mutate(
-          Edge_Type = "Pathway-Metabolite"
-        )
-      if (nrow(pm_filtered) > 0) {
-        all_network_edges[[length(all_network_edges) + 1]] <- pm_filtered
-        message("    Added ", nrow(pm_filtered), " pathway-metabolite edges from ", basename(pathway_metabolite_file), ".")
+    if (!is.null(pm_df)) {
+      required_pm_cols <- c("FunctionID", "MetaboliteID", "correlation")
+      if (!all(required_pm_cols %in% colnames(pm_df))) {
+        warning("Pathway-Metabolite file missing required columns (FunctionID, MetaboliteID, correlation). Skipping this layer.")
+        pm_df <- NULL
       } else {
-        message("    No relevant pathway-metabolite edges found in ", basename(pathway_metabolite_file), " after filtering by GSEA pathways.")
+        # Filter by GSEA pathways if available
+        if (!is.null(gsea_pathways_to_filter)) {
+          pm_df <- dplyr::filter(pm_df, FunctionID %in% gsea_pathways_to_filter)
+        }
+        
+        if (nrow(pm_df) > 0) {
+          # Standardize column names
+          pm_df_standardized <- dplyr::select(pm_df,
+                                              Feature1 = FunctionID,
+                                              Feature2 = MetaboliteID,
+                                              edge_score = correlation
+          )
+          pm_df_standardized$edge_type <- "Pathway-Metabolite"
+          all_network_edges[[length(all_network_edges) + 1]] <- pm_df_standardized
+        }
       }
-    } else {
-      warning("    Pathway-Metabolite file '", basename(pathway_metabolite_file), "' missing required columns ('FunctionID', 'MetaboliteID', 'Correlation') or is empty. Skipping this layer.")
     }
   }
   
   # 5. Combine all network edges into a single data frame
-  message("\n5. Combining all network edges...")
   if (length(all_network_edges) == 0) {
     stop("No network edges were collected from any layer after filtering by GSEA pathways. Please check input files and GSEA results.")
   }
   
   # Define the required output columns
-  final_cols <- c("Feature1", "Feature2", "Edge_Score", "Edge_Type")
+  final_cols <- c("Feature1", "Feature2", "edge_score", "edge_type") # Changed column names
   
-  final_network_df <- bind_rows(all_network_edges) %>%
-    select(all_of(final_cols)) # Ensure only the specified columns are kept and in order
-  
-  message("    Total integrated edges: ", nrow(final_network_df))
+  final_network_df <- dplyr::select(dplyr::bind_rows(all_network_edges), dplyr::all_of(final_cols)) # Ensure only the specified columns are kept and in order
   
   # 6. Save the final integrated network with a dynamic filename
-  dynamic_output_filename <- if (!is.null(gsea_suffix)) {
-    paste0("multi_layered_network_", gsea_suffix, ".csv")
+  dynamic_output_filename <- if (!is.null(gsea_suffix) && !is.null(gsea_comparison_group)) {
+    # Use the target group and the full comparison group from GSEA
+    paste0("multi_layered_network_", gsea_suffix, "_from_gsea_", gsea_comparison_group, ".csv")
   } else {
-    # Fallback if GSEA suffix could not be determined
-    paste0("multi_layered_network_overall.csv") 
+    # Fallback if GSEA suffix or comparison group could not be determined
+    paste0("multi_layered_network_overall.csv")
   }
   
   final_output_filepath <- file.path(output_directory, dynamic_output_filename)
-  message("\n6. Saving the final integrated multi-layered network to: ", final_output_filepath)
   write.csv(final_network_df, final_output_filepath, row.names = FALSE)
-  message("Multi-layered network construction complete.")
-  return(invisible(NULL))
+  
+  return(final_output_filepath)
 }
 ```
 
@@ -1409,24 +1284,25 @@ construct_multi_layered_network <- function(
 #### **Example usage**
 
 ```r
-source("https://raw.githubusercontent.com/bowornpol/NUIM-pipeline/main/code/construct_multi_layered_network.R")
+source("https://raw.githubusercontent.com/bowornpol/NUIM-pipeline/main/code/con_mln.R")
 
-# Define the full path and filename for your input CSV file
-my_microbe_pathway_file <- "microbe_pathway_network_results/microbe_pathway_network_G2_median.csv"
-my_pathway_jaccard_file <- "pathway_pathway_network_results/pathway_jaccard_G1_vs_G2.csv"
-my_pathway_metabolite_file <- "pathway_metabolite_network_results/pathway_metabolite_network_G2_pearson_corr_0.30.csv"
-my_gsea_file <- "pathway_pathway_network_results/gsea_results_G1_vs_G2_0.1_fdr_signed_log_pvalue.csv"
+# Define placeholder file paths and an output directory
+# Replace these with your actual file paths and desired output location
+gsea_results_file_path <- "data/gsea_results_GroupB_vs_GroupA_0.05_BH_signed_log_pvalue.csv" 
+microbe_pathway_file_path <- "data/microbe_pathway_network_GroupA_median.csv" 
+pathway_jaccard_file_path <- "data/pathway_pathway_network_from_gsea_GroupB_vs_GroupA.csv" 
+pathway_metabolite_file_path <- "data/pathway_metabolite_network_GroupA_spearman_0.70_from_gsea_GroupB_vs_GroupA.csv"
+output_directory_mln <- "output_multi_layered_networks"
 
-# Define the full path and filename for your output CSV file
-my_output_file <- "multi_layered_network_results"
-
-# Call the function with your specific file paths 
-construct_multi_layered_network(
-  microbe_pathway_file = my_microbe_pathway_file,
-  pathway_jaccard_file = my_pathway_jaccard_file,
-  pathway_metabolite_file = my_pathway_metabolite_file,
-  gsea_results_file = my_gsea_file,
-  output_file = my_output_file
+# Example 1: Integrate all available layers with GSEA filtering
+cat("Running con_mln with all layers and GSEA filtering...\n")
+mln_output_1 <- con_mln(
+  gsea_results_file = gsea_results_file_path,     # GSEA results file (for pathway filtering and naming)
+  microbe_pathway_file = microbe_pathway_file_path, # Microbe-Pathway network file
+  pathway_jaccard_file = pathway_jaccard_file_path, # Pathway-Pathway Jaccard network file
+  pathway_metabolite_file = pathway_metabolite_file_path, # Pathway-Metabolite network file
+  output_directory = output_directory_mln,        # Directory to save the combined network
+  file_type = "csv"                               # Specify input file type: "csv" or "tsv"
 )
 ```
 
