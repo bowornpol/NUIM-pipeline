@@ -1397,7 +1397,6 @@ iden_hub <- function(
   # Pre-calculate degrees and local clustering coefficients
   node_degrees <- igraph::degree(g)
   # transitivity(type="local") returns NaN for nodes with degree < 2.
-  # We will handle these cases based on the definition "no edge between neighbors".
   node_clustering_coeffs <- igraph::transitivity(g, type = "local", vids = igraph::V(g))
   names(node_clustering_coeffs) <- igraph::V(g)$name
   
@@ -1454,6 +1453,8 @@ iden_hub <- function(
   return(invisible(NULL))
 }
 ```
+
+</details>
 
 #### **Example usage**
 
@@ -1908,40 +1909,29 @@ node_prior <- function(
 ```r
 source("https://raw.githubusercontent.com/bowornpol/NUIM-pipeline/main/code/node_prior.R")
 
-# Define the full path and filename for your input CSV file
-my_multi_layered_network_file <- "multi_layered_network_results/multi_layered_network_G2.csv"
+# Define placeholder file paths and an output directory
+# Replace these with your actual file paths and desired output location
+multi_layered_network_file_path <- "data/multi_layered_network_G2_from_gsea_G1_vs_G2.csv"
+output_directory_np <- "node_prioritization_result"
 
-# Define the full path for your output directory
-my_output_directory <- "node_prioritization_results"
-
-# Call the function with your specific file paths
-node_prioritization(
-  multi_layered_network_file = my_multi_layered_network_file,
-  output_directory = my_output_directory,
-  # filter_other_metabolite_edges: This parameter controls the scope of the diffusion network
-  # for each metabolite seed.
-  #   - Set to TRUE: For each metabolite seed, the diffusion will occur ONLY within
-  #     the sub-network that does *not* contain any other metabolite nodes (except the seed itself).
-  #     This focuses the diffusion on the pathways and microbes directly connected to the seed,
-  #     without "leaking" heat to other metabolites.
-  #   - Set to FALSE: The diffusion will occur across the ENTIRE multi-layered network,
-  #     allowing heat to spread to all connected nodes, including other metabolite nodes.
-  #     This provides a broader view of the seed's influence across the full network.
-  filter_other_metabolite_edges = TRUE 
+node_prior(
+  multi_layered_network_file = multi_layered_network_file_path, 
+  output_file = output_directory_np, 
+  filter_other_metabolite_edges = TRUE # If TRUE, filters out other metabolite edges; if FALSE, keeps all metabolite edges
 )
 ```
 
 #### **Example output**
 
-The `node_prioritization` function generates multiple output files for each diffusion set in the specified `output_directory`:
+The function generates multiple output files for each diffusion set in the specified `output_file`:
 
 1.  **`heat_scores_[metabolite]_[network].csv`**: A CSV file containing the final heat scores for all nodes that participated in the diffusion from that specific metabolite seed, sorted by `Heat_Score` in descending order.
 2.  **`spearman_correlations_[metabolite]_[network]*.csv`**: A CSV file detailing the Spearman correlations between heat vectors at consecutive time steps, used for stabilization assessment.
 3.  **`correlation_plot_[metabolite]_[network]*.jpg`**: A JPEG image visualizing the Spearman correlations over time, with the identified stabilization time marked.
 
-**Example table: `heat_scores_acetate_multi_layered_network_G2.csv`**
+**Example table: `heat_scores_acetate_multi_layered_network_G2_from_gsea_G1_vs_G2.csv`**
 
-| Node | Heat_Score |
+| Node | Heat_score |
 | :------------- | :---------- |
 | acetate | 0.480 |
 | ko00010 | 0.123 |
@@ -1952,4 +1942,4 @@ The `node_prioritization` function generates multiple output files for each diff
 
 Each row in the `heat_scores_*.csv` file represents a node in the diffusion network and its calculated heat score.
 - `Node`: The identifier for a node in the network (e.g., microbe, pathway, metabolite).
-- `Heat_Score`: The calculated heat score for that node at the diffusion stabilization time, indicating its importance relative to the seed node.
+- `Heat_score`: The calculated heat score for that node at the diffusion stabilization time, indicating its importance relative to the seed node.
