@@ -219,7 +219,7 @@ pathway_pipeline.py \
 
 | File                      | Description                            |
 |---------------------------|--------------------------------------|
-| `pred_metagenome_unstrat.tsv` | Predicted gene (KO) abundance. |
+| `pred_metagenome_unstrat.tsv` | Predicted gene abundance. |
 | `path_abun_unstrat.tsv`   | Predicted pathway abundance. |
 | `path_abun_contrib.tsv`   | Predicted pathway contribution. |
 
