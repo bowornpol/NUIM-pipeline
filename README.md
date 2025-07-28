@@ -28,7 +28,7 @@ The NUIM pipeline depends on a set of external bioinformatics tools and an R-bas
 
 #### **Core functions and their utilities**
 
-We provided a set of custom R functions to support each module of the pipeline. The following table outlines the core functions of the NUIM pipeline and their primary utilities.
+We provided a set of custom R functions to support each module. The following table outlines the core functions of the NUIM pipeline and their primary utilities.
 
 | Function | Utility |
 | :---------------- | :----------------------- |
