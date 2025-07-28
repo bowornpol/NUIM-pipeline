@@ -32,13 +32,13 @@ We provided a set of custom R functions to support each module. The following ta
 
 | Function | Utility |
 | :---------------- | :----------------------- |
-| `con_mpn` | Constructs microbe-pathway network. |
-| `con_ppn` | Constructs pathway-pathway network. |
-| `con_pmn` | Constructs pathway-metabolite network. |
-| `con_mln` | Integrates individual networks into a multi-layered network. |
-| `iden_hub` | Identifies key microbial pathways using MCC algorithm. |
-| `find_path` | Identifies the shortest path between the selected source and target nodes using Dijkstra's algorithm. |
-| `node_prior` |  Identifies microbe-associated metabolites using LHD algorithm. |
+| `con_mpn` | Construct a microbe-pathway network. |
+| `con_ppn` | Construct a pathway-pathway network. |
+| `con_pmn` | Construct a pathway-metabolite network. |
+| `con_mln` | Integrate individual networks into a multi-layered network. |
+| `iden_hub` | Identify key microbial pathways using MCC algorithm. |
+| `find_path` | Identify the shortest path between the selected source and target nodes using Dijkstra's algorithm. |
+| `node_prior` |  Identify microbe-associated metabolites using LHD algorithm. |
 
 <p align="center">
   <img src="figures/NUIM_function.png" width="500"/>
