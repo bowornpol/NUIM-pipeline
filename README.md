@@ -1345,7 +1345,7 @@ Each row represents a connection between two features (`Feature1`, `Feature2`).
 - `edge_score`: The numerical strength or value of the interaction between `Feature1` and `Feature2`.
 - `edge_type`: A categorical label indicating the type of interaction.
 
-## Module 3: Network Analysis
+## Module 3: Network analysis
 
 This module provides three network analyses designed to identify context-specific associations. It takes the multi-layered network generated from **Module 2** as input.
 
