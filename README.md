@@ -38,7 +38,7 @@ We provided a set of custom R functions to support each module. The following ta
 | `con_mln` | Integrate individual networks into a multi-layered network. |
 | `iden_hub` | Identify key microbial pathways using MCC algorithm. |
 | `find_path` | Identify the shortest path between the selected source and target nodes using Dijkstra's algorithm. |
-| `node_prior` |  Identify microbe-associated metabolites using LHD algorithm. |
+| `node_prior` | Identify microbe-associated metabolites using LHD algorithm. |
 
 <p align="center">
   <img src="figures/NUIM_function.png" width="500"/>
