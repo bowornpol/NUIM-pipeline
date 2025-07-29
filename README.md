@@ -8,7 +8,7 @@ We developed NUIM, a modular, network-based framework for integrating microbiome
 
 ## Required tools, R packages, and core functions for NUIM
 
-The NUIM pipeline depends on a set of external bioinformatics tools and an R-based environment for network construction and analysis. The versions of these tools and packages may vary depending on the user. The following table details the requirements: 
+The NUIM pipeline depends on a set of external bioinformatics tools (including QIIME2 and PICRUSt2) and an R-based environment for network construction and analysis. The versions of these tools and packages may vary depending on the user. The following table details the requirements: 
 
 | Category          | Tool / R package         |
 | :---------------- | :----------------------- |
