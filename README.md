@@ -35,7 +35,7 @@ We provided a set of custom R functions to support each module. The following ta
 | `con_mpn` | Construct a microbe-pathway network. |
 | `con_ppn` | Construct a pathway-pathway network. |
 | `con_pmn` | Construct a pathway-metabolite network. |
-| `con_mln` | Integrate individual networks into a multi-layered network. |
+| `con_mln` | Integrate individual network layers into a multi-layered network. |
 | `iden_hub` | Identify key microbial pathways using MCC algorithm. |
 | `find_path` | Identify the shortest path between the selected source and target nodes using Dijkstra's algorithm. |
 | `node_prior` | Identify microbe-associated metabolites using LHD algorithm. |
