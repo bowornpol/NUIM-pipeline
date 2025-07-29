@@ -1078,7 +1078,7 @@ con_pmn(
 
 #### **Example output**
 
-The function creates an output directory (e.g., `pathway_metabolite_network_results`) containing `.csv` files for each group analyzed (e.g., `pathway_metabolite_network_[class]_[correlation_method]_[corr_cutoff]_[target class]_from_gsea_[class]_vs_[class].csv`).
+The function creates an output directory (e.g., `pathway_metabolite_network_results`) containing `.csv` a file specific to the group analyzed and the filtering method applied (e.g., `pathway_metabolite_network_[correlation_method]_[corr_cutoff]_[target class]_from_gsea_[class]_vs_[class].csv`).
 
 **Example table: `pathway_metabolite_network_spearman_0.5_G2_from_gsea_G1_vs_G2.csv`**
 
