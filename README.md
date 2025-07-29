@@ -52,7 +52,7 @@ source("https://raw.githubusercontent.com/bowornpol/NUIM-pipeline/main/code/read
 
 ## Module 1: Data preparation and processing
 
-This module defines the procedures required to prepare and process the input data for downstream network construction.
+This module defines the procedures required to prepare and process input data for downstream network construction.
 
 - Input data includes `microbial sequencing reads in FASTQ format` and `metabolite concentration table`.  
 - Microbiome data processing involves the use of QIIME2 to generate a feature table and representative sequences. These outputs are subsequently processed using PICRUSt2 for functional prediction, yielding gene abundance, pathway abundance, and pathway contribution data.  
